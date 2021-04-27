@@ -1,0 +1,13 @@
+---
+version: '3'
+services:
+  bot:
+    image: gohumble/crypto-news-bot:latest
+    build:
+      context: .
+      dockerfile: "./docker/go/Dockerfile"
+    restart: unless-stopped
+    container_name: crypto-news-bot
+    volumes:
+      - "./data:/app/data"
+      - "./log:/app/log"
