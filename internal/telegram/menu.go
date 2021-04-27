@@ -23,7 +23,7 @@ var (
 	// Reply buttons.
 	btnHelp       = menu.Text("/help")
 	btnSubscribe  = menu.Text("/subscribe")
-	btnGit        = menu.URL("github", "https://github.com/gohumble/crypto-news-bot")
+	btnGit        = menu.URL("/github", "https://github.com/gohumble/crypto-news-bot")
 	btnSentiments = menu.Text("/sentiments")
 )
 
@@ -54,7 +54,9 @@ func InitHandler(bot *tb.Bot, db *bitcask.Bitcask, newsfeed *news.Analyzer) {
 		}
 
 	})
-
+	bot.Handle(&btnGit, func(m *tb.Message) {
+		bot.Send(m.Sender, "https://github.com/gohumble/crypto-news-bot")
+	})
 	// On reply button pressed (message)
 	bot.Handle(&btnHelp, func(m *tb.Message) {
 		bot.Send(m.Sender, "Usage:\n\n"+
