@@ -90,17 +90,13 @@ func (b *Analyzer) GetSentimentTable() string {
 	return header
 }
 
-func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) *sentiment.Sentiment {
+func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) {
 	if !b.Db.Has(sentiment.Key()) {
 		b.Mutex.Lock()
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)
 		b.Mutex.Unlock()
 	}
-	if sentiment.Sentiment != nil {
-		return sentiment
-	}
-	return nil
 }
 func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.Hash)
@@ -116,8 +112,7 @@ func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 				s.Coin = coin
 				compiler.Items[itemHash] = s
 				b.SentimentCompiler[coin].Items[itemHash] = compiler.Items[itemHash]
-
-				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title, "link": s.FeedItem.Link}).Info("storing newly compiled feed item")
+				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title, "link": s.FeedItem.Link}).Info("successfully ran sentiment analysis")
 			}
 
 		}
@@ -134,16 +129,11 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, words := range KeyWords {
-		coin := words[0]
-		if contains(s.FeedItem.Title, words) {
-			if b.SentimentCompiler[coin] == nil {
-				compiler := &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
-				b.SentimentCompiler[coin] = compiler
-			}
-			b.SentimentCompiler[coin].Items[fmt.Sprintf("%x", hashBytes)] = s
-			log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title}).Info("Added pre compiled item to sentiment compiler")
+	if s.Sentiment != nil {
+		if b.SentimentCompiler[s.Coin] == nil {
+			b.SentimentCompiler[s.Coin] = &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
 		}
+		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", hashBytes)] = s
 	}
 
 	return nil
@@ -151,11 +141,12 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	for _, feedItem := range feed.Items {
-		s := b.categorize(&sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink})
-		if s != nil {
+		s := &sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
+		b.categorize(s)
+		if s.Sentiment != nil {
 			broadCastSentiment(s, b.Channels.BroadCastChannel)
-			saveSentiment(s, b.Db)
 		}
+		sentiment.Save(s, b.Db)
 	}
 	for _, compiler := range b.SentimentCompiler {
 		compiler.Compile()

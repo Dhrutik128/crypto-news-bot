@@ -2,10 +2,8 @@ package news
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/gohumble/crypto-news-bot/internal/sentiment"
 	"github.com/mmcdole/gofeed"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -53,13 +51,6 @@ func (b *Analyzer) downloadAndCategorizeFeeds(feeds []string) {
 // download all feeds, that users have added
 func (b *Analyzer) downloadDefaultFeeds() {
 	b.downloadAndCategorizeFeeds(DefaultFeed)
-}
-func saveSentiment(sentiment *sentiment.Sentiment, db *bitcask.Bitcask) {
-	sentimentBytes, err := json.Marshal(sentiment)
-	if err != nil {
-		return
-	}
-	db.Put(sentiment.Hash, sentimentBytes)
 }
 func broadCastSentiment(sentiment *sentiment.Sentiment, broadcastChannel chan BroadCast) {
 	if !sentiment.WasBroadcast {

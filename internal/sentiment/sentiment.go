@@ -2,9 +2,12 @@ package sentiment
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"github.com/mmcdole/gofeed"
 	"github.com/olekukonko/tablewriter"
+	"github.com/prologic/bitcask"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -17,6 +20,17 @@ type Sentiment struct {
 	WasBroadcast bool
 }
 
+func Save(sentiment *Sentiment, db *bitcask.Bitcask) {
+	sentimentBytes, err := json.Marshal(sentiment)
+	if err != nil {
+		log.WithFields(log.Fields{"module": "[PERSISTANCE]", "error": err.Error()}).Info("failed marshaling sentiment")
+		return
+	}
+	err = db.Put(sentiment.Hash, sentimentBytes)
+	if err != nil {
+		log.WithFields(log.Fields{"module": "[PERSISTANCE]", "error": err.Error()}).Info("failed persisting sentiment")
+	}
+}
 func (s Sentiment) String() string {
 	sb := &strings.Builder{}
 	table := tablewriter.NewWriter(sb)
