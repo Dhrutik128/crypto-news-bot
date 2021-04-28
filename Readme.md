@@ -6,6 +6,7 @@
 * [Usage.](#usage)
 * [Deployment.](#deployment)
 * [Planned.](#planned)
+* [Contribution.](#contribution)
 
 
 
@@ -30,10 +31,14 @@ If you want to deploy your own instance, create a new bot using [@BotFather](htt
 4. Run `docker-compose up -d` to start the bot
 
 ## Planned 
-* Huge refactor to improve performance - remove redundant code
+* Huge code refactor to improve performance - remove redundant code - increase consistency 
+* Checkout persistence solutions. Using [Bitcast](https://github.com/prologic/bitcask) for convenience at the moment. This could cause some issues in the future. 
+* Improve logging. I'm thinking of fluentd + elasticsearch. This could also resolve the persistence issue.
 * Making keywords configurable by user. Currently, news categorization by coin uses a static list of keywords.This list should be configurable.
 * Improve news presentation for better readability.
-* Improve sentiment analysis. 
+* Update instructions and help text. 
+* Improve sentiment analysis.
+* Read ALL news from single feed (not based on coin).
 
 ## Contribution 
-If you have found bugs or got some improvements, feel free to open a issue or pull request. 
+If you have found a bug or got some improvements / ideas, feel free to open a issue or pull request. 
