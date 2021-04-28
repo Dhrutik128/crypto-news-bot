@@ -49,6 +49,9 @@ func (b *Analyzer) getUserFeeds() []string {
 }
 
 // add feed to user and if feed does not exists, also add it to the analyzer
+func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
+	return user.RemoveFeed(source.String(), b.Db)
+}
 func (b *Analyzer) AddFeed(source *url.URL, user *storage.User) error {
 	if b.Feeds[source.String()] == nil {
 		feed, err := fetch(source.String())

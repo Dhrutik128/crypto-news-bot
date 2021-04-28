@@ -24,15 +24,13 @@ var (
 		"/feeds *add {url}* - add a new rss feed to your subscriptions \n" +
 		"/feeds *remove {url}* - remove a rss feed from your subscriptions \n" +
 		"/feeds *list* - list all subscribed feeds\n" +
-		"/feeds *reset* - reset to default feed list\n" +
-		"/feeds *top100* - returns a list of top 100 crypto sites"
+		"/feeds *reset* - reset to default feed list\n"
 )
 
 func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyzer) func(m *tb.Message) {
 	return func(m *tb.Message) {
 
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
-
 			if m.Text == "/feeds" {
 				bot.Send(m.Sender, markdownEscape(helpText), FeedsSelector, tb.ModeMarkdownV2)
 				return
@@ -54,9 +52,22 @@ func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyze
 						if err != nil {
 							//bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
 						}
-
 					}
 				case "remove":
+					urls := s[1]
+					urlSlice := strings.Split(urls, ",")
+					for _, feedUrl := range urlSlice {
+						log.Print("removing ", feedUrl)
+						u, err := url.Parse(feedUrl)
+						if err != nil {
+							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+							return
+						}
+						err = analyzer.RemoveFeed(u, user)
+						if err != nil {
+							//bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+						}
+					}
 				case "list":
 					inlineButtonsHandler(bot, db, analyzer, user, "list")
 				case "reset":

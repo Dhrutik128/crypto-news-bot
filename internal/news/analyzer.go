@@ -1,19 +1,17 @@
 package news
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/drankou/go-vader/vader"
 	"github.com/gohumble/crypto-news-bot/internal/sentiment"
 	"github.com/mmcdole/gofeed"
+	"github.com/olekukonko/tablewriter"
 	"github.com/prologic/bitcask"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/tucnak/telebot.v2"
 	"strings"
 	"sync"
-)
-
-import (
-	"encoding/json"
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -83,31 +81,33 @@ type Channels struct {
 }
 
 func (b *Analyzer) GetSentimentTable() string {
-	header := "```| Symbol | Sentiment |\n|--------|-------|\n"
-	for i, coin := range b.SentimentCompiler {
-		if len(coin.Items) > 0 {
-			header = header + fmt.Sprintf("| %s | %f |\n", i, coin.Avg)
+	sb := &strings.Builder{}
+	table := tablewriter.NewWriter(sb)
+	table.SetHeader([]string{"Symbol", "Sentiment"})
+	for coin, compiler := range b.SentimentCompiler {
+		if len(compiler.Items) > 0 {
+			table.Append([]string{coin, fmt.Sprintf("%f", compiler.Avg)})
 		}
 	}
-	header = header + " ```"
-	return header
+	table.Render()
+	return sb.String()
 }
 
-func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) *sentiment.Sentiment {
-	b.Mutex.Lock()
-
+func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) error {
 	if !b.Db.Has(sentiment.Key()) {
+		b.Mutex.Lock()
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)
+		b.Mutex.Unlock()
+		return nil
 	}
-	b.Mutex.Unlock()
-	return sentiment
+	return fmt.Errorf("sentiment already in sotrage")
 }
 func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.Hash)
 	for _, words := range KeyWords {
 		coin := words[0]
-		compiler := &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
+		compiler := sentiment.NewCompiler()
 		if b.SentimentCompiler[coin] == nil {
 			b.SentimentCompiler[coin] = compiler
 		}
@@ -117,8 +117,7 @@ func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 				s.Coin = coin
 				compiler.Items[itemHash] = s
 				b.SentimentCompiler[coin].Items[itemHash] = compiler.Items[itemHash]
-
-				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title, "link": s.FeedItem.Link}).Info("storing newly compiled feed item")
+				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title, "link": s.FeedItem.Link}).Info("successfully ran sentiment analysis")
 			}
 
 		}
@@ -135,16 +134,11 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 	if err != nil {
 		return err
 	}
-	for _, words := range KeyWords {
-		coin := words[0]
-		if contains(s.FeedItem.Title, words) {
-			if b.SentimentCompiler[coin] == nil {
-				compiler := &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
-				b.SentimentCompiler[coin] = compiler
-			}
-			b.SentimentCompiler[coin].Items[fmt.Sprintf("%x", hashBytes)] = s
-			log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title}).Info("Added pre compiled item to sentiment compiler")
+	if s.Sentiment != nil {
+		if b.SentimentCompiler[s.Coin] == nil {
+			b.SentimentCompiler[s.Coin] = sentiment.NewCompiler()
 		}
+		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", hashBytes)] = s
 	}
 
 	return nil
@@ -152,9 +146,15 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	for _, feedItem := range feed.Items {
-		s := b.categorize(&sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink})
-		broadCastSentiment(s, b.Channels.BroadCastChannel)
-		saveSentiment(s, b.Db)
+		s := &sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
+		err := b.categorize(s)
+		if err != nil {
+			continue
+		}
+		if s.Sentiment != nil {
+			broadCastSentiment(s, b.Channels.BroadCastChannel)
+		}
+		sentiment.Save(s, b.Db)
 	}
 	for _, compiler := range b.SentimentCompiler {
 		compiler.Compile()

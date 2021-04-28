@@ -35,9 +35,9 @@ func InitHandler(bot *tb.Bot, db *bitcask.Bitcask, newsfeed *news.Analyzer) {
 		}
 		_, err := bot.Send(m.Sender, markdownEscape("HI! I am a *Crypto News Stream Bot*. \n\n"+
 			"I will fetch the latest news from RSS feeds and categorize and analyze them by coin.\n"+
-			"You just  need to subscribe to coins using the /subscribe command.\n"+
-			"Please not that news updates will be broadcast to subscribers every hour.\n\n"+
-			"By default i will scrape the top 100 crypto sites and send you the latest news on subscribed coins.\n"+
+			"You just need to subscribe to coins using the /subscribe command.\n"+
+			"News updates will be broadcast to subscribers every hour.\n\n"+
+			"I will scrape the top 100 crypto sites and send you the latest news on subscribed coins by default.\n"+
 			"If you want to manage your personal rss feeds, you can use the /feeds command."), menu, tb.ModeMarkdownV2)
 		if err != nil {
 			return

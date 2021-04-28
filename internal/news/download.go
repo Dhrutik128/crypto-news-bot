@@ -2,10 +2,8 @@ package news
 
 import (
 	"context"
-	"encoding/json"
 	"github.com/gohumble/crypto-news-bot/internal/sentiment"
 	"github.com/mmcdole/gofeed"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	"time"
 )
@@ -30,19 +28,23 @@ func (b *Analyzer) downloadUserFeeds() {
 func (b *Analyzer) downloadAndCategorizeFeeds(feeds []string) {
 	if len(feeds) > 0 {
 		for _, feed := range feeds {
-			fetchedFeed, err := fetch(feed)
-			if err != nil {
-				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed, "error": err.Error()}).Error("Failed downloading feed")
-				continue
-			}
-			// add the fresh feeds to slice.
-			if fetchedFeed.FeedLink != feed {
-				fetchedFeed.FeedLink = feed
-			}
-			// todo -- to increase efficiency, slice should only be updated, when fetched and stored feeds are not equal
-			b.Feeds[feed] = fetchedFeed
-			b.categorizeFeed(fetchedFeed)
-			log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("Downloading Users RSS Feeds")
+			go func(feed string) {
+				fetchedFeed, err := fetch(feed)
+				if err != nil {
+					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed, "error": err.Error()}).Error("Failed downloading feed")
+					return
+				}
+				// add the fresh feeds to slice.
+				if fetchedFeed.FeedLink != feed {
+					fetchedFeed.FeedLink = feed
+				}
+				// todo -- to increase efficiency, slice should only be updated, when fetched and stored feeds are not equal
+				b.Mutex.Lock()
+				b.Feeds[feed] = fetchedFeed
+				b.Mutex.Unlock()
+				b.categorizeFeed(fetchedFeed)
+				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("Downloading RSS Feeds")
+			}(feed)
 		}
 
 	}
@@ -51,13 +53,6 @@ func (b *Analyzer) downloadAndCategorizeFeeds(feeds []string) {
 // download all feeds, that users have added
 func (b *Analyzer) downloadDefaultFeeds() {
 	b.downloadAndCategorizeFeeds(DefaultFeed)
-}
-func saveSentiment( sentiment *sentiment.Sentiment, db *bitcask.Bitcask) {
-	sentimentBytes, err := json.Marshal(sentiment)
-	if err != nil {
-		return
-	}
-	db.Put(sentiment.Hash, sentimentBytes)
 }
 func broadCastSentiment(sentiment *sentiment.Sentiment, broadcastChannel chan BroadCast) {
 	if !sentiment.WasBroadcast {
@@ -70,20 +65,21 @@ func broadCastSentiment(sentiment *sentiment.Sentiment, broadcastChannel chan Br
 		}
 	}
 }
+
 // download feeds and set lastDownloadTime
 func (b *Analyzer) tickerTryDownload() {
 	if b.tickerShouldDownloadFeed() {
 		b.downloadDefaultFeeds()
 		b.downloadUserFeeds()
 
-		b.Db.Put([]byte( "lastDownloadTime"), []byte(time.Now().Format(time.RFC3339)))
+		b.Db.Put([]byte("lastDownloadTime"), []byte(time.Now().Format(time.RFC3339)))
 	}
 }
 
 // check if rss feeds should be downloaded
 func (b *Analyzer) tickerShouldDownloadFeed() bool {
 	// load last download timestamp
-	lastDownloadTime, _ := b.Db.Get([]byte( "lastDownloadTime"))
+	lastDownloadTime, _ := b.Db.Get([]byte("lastDownloadTime"))
 	do := true
 	if len(lastDownloadTime) > 0 {
 		t, err := time.Parse(time.RFC3339, string(lastDownloadTime))
