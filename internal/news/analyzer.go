@@ -90,13 +90,15 @@ func (b *Analyzer) GetSentimentTable() string {
 	return header
 }
 
-func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) {
+func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) error {
 	if !b.Db.Has(sentiment.Key()) {
 		b.Mutex.Lock()
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)
 		b.Mutex.Unlock()
+		return nil
 	}
+	return fmt.Errorf("sentiment already in sotrage")
 }
 func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.Hash)
@@ -142,7 +144,10 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	for _, feedItem := range feed.Items {
 		s := &sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
-		b.categorize(s)
+		err := b.categorize(s)
+		if err != nil {
+			return
+		}
 		if s.Sentiment != nil {
 			broadCastSentiment(s, b.Channels.BroadCastChannel)
 		}
