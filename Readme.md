@@ -39,6 +39,7 @@ If you want to deploy your own instance, create a new bot using [@BotFather](htt
 * Update instructions and help text. 
 * Improve sentiment analysis.
 * Read ALL news from single feed (not based on coin).
+* Add tests 
 
 ## Contribution 
 If you have found a bug or got some improvements / ideas, feel free to open a issue or pull request. 
