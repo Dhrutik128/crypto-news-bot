@@ -30,7 +30,7 @@ func userBroadCastFunc(db *bitcask.Bitcask, cast news.BroadCast, bot *tb.Bot) fu
 				checkUserBlockedBot(err, cast.User, db)
 				return err
 			}
-			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Info("BROADCAST \n%s\nto %s\n", cast.Sentiment.FeedItem.Title, cast.User.Username)
+			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", cast.Sentiment.FeedItem.Title, cast.User.Username)
 		}
 		return nil
 	}

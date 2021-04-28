@@ -72,7 +72,7 @@ func checkUserBlockedBot(err error, user *tb.User, db *bitcask.Bitcask) {
 	case *tb.APIError:
 		apiError := err.(*tb.APIError)
 		if apiError.Code == 401 && strings.Contains(apiError.Description, "blocked") {
-			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("user %s blocked bot. Deleting user data.", user.ID)
+			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("user %d blocked bot. Deleting user data.", user.ID)
 			err := db.Delete([]byte(fmt.Sprintf("user_%d", user.ID)))
 			if err != nil {
 				log.WithFields(log.Fields{"error": err.Error(), "module": "[TELEGRAM]"}).Error("could not delete user")
