@@ -39,7 +39,9 @@ func (b *Analyzer) downloadAndCategorizeFeeds(feeds []string) {
 					fetchedFeed.FeedLink = feed
 				}
 				// todo -- to increase efficiency, slice should only be updated, when fetched and stored feeds are not equal
+				b.Mutex.Lock()
 				b.Feeds[feed] = fetchedFeed
+				b.Mutex.Unlock()
 				b.categorizeFeed(fetchedFeed)
 				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("Downloading RSS Feeds")
 			}(feed)
