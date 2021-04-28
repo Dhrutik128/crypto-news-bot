@@ -44,6 +44,24 @@ func (u *User) AddFeed(feed string, db *bitcask.Bitcask) error {
 	u.Settings.Feeds = append(u.Settings.Feeds, feed)
 	return StoreUser(u, db)
 }
+func (u *User) RemoveFeed(feed string, db *bitcask.Bitcask) error {
+	removed := false
+	for i, userFeed := range u.Settings.Feeds {
+		if feed == userFeed {
+			removed = true
+			u.Settings.Feeds = remove(u.Settings.Feeds, i)
+		}
+	}
+	if removed {
+		return StoreUser(u, db)
+	}
+	return fmt.Errorf("no feed removed")
+}
+
+func remove(slice []string, i int) []string {
+	copy(slice[i:], slice[i+1:])
+	return slice[:len(slice)-1]
+}
 
 // generate users database key
 func (u User) Key() []byte {
