@@ -24,8 +24,7 @@ var (
 		"/feeds *add {url}* - add a new rss feed to your subscriptions \n" +
 		"/feeds *remove {url}* - remove a rss feed from your subscriptions \n" +
 		"/feeds *list* - list all subscribed feeds\n" +
-		"/feeds *reset* - reset to default feed list\n" +
-		"/feeds *top100* - returns a list of top 100 crypto sites"
+		"/feeds *reset* - reset to default feed list\n"
 )
 
 func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyzer) func(m *tb.Message) {
