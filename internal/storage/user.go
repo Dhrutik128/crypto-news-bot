@@ -41,8 +41,19 @@ func (s UserSettings) IsFeedSubscribed(feed string) bool {
 
 // add feed url to users feed subscription
 func (u *User) AddFeed(feed string, db *bitcask.Bitcask) error {
-	u.Settings.Feeds = append(u.Settings.Feeds, feed)
-	return StoreUser(u, db)
+	alreadyAdded := false
+	for _, userFeed := range u.Settings.Feeds {
+		if feed == userFeed {
+			alreadyAdded = true
+			break
+		}
+	}
+	if !alreadyAdded {
+		u.Settings.Feeds = append(u.Settings.Feeds, feed)
+		return StoreUser(u, db)
+	}
+	return fmt.Errorf("feed is already included in users feeds")
+
 }
 func (u *User) RemoveFeed(feed string, db *bitcask.Bitcask) error {
 	removed := false
@@ -50,6 +61,7 @@ func (u *User) RemoveFeed(feed string, db *bitcask.Bitcask) error {
 		if feed == userFeed {
 			removed = true
 			u.Settings.Feeds = remove(u.Settings.Feeds, i)
+			break
 		}
 	}
 	if removed {
