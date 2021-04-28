@@ -14,9 +14,9 @@ RUN go build -o crypto-news-bot .
 #building finished. Now extracting single bin in second stage.
 FROM alpine
 
-RUN adduser -S -D -H -h /app crypto-news-bot
+#RUN adduser -S -D -H -h /app crypto-news-bot
 
-USER crypto-news-bot
+#USER crypto-news-bot
 
 COPY --from=builder /build/crypto-news-bot /app/
 COPY --from=builder /build/config.yaml /app/config.yaml
