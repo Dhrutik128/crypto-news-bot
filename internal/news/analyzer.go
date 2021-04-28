@@ -6,6 +6,7 @@ import (
 	"github.com/drankou/go-vader/vader"
 	"github.com/gohumble/crypto-news-bot/internal/sentiment"
 	"github.com/mmcdole/gofeed"
+	"github.com/olekukonko/tablewriter"
 	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tucnak/telebot.v2"
@@ -80,14 +81,16 @@ type Channels struct {
 }
 
 func (b *Analyzer) GetSentimentTable() string {
-	header := "```| Symbol | Sentiment |\n|--------|-------|\n"
+	sb := &strings.Builder{}
+	table := tablewriter.NewWriter(sb)
+	table.SetHeader([]string{"Symbol", "Sentiment"})
 	for coin, compiler := range b.SentimentCompiler {
 		if len(compiler.Items) > 0 {
-			header = header + fmt.Sprintf("| %s | %f |\n", coin, compiler.Avg)
+			table.Append([]string{coin, fmt.Sprintf("%f", compiler.Avg)})
 		}
 	}
-	header = header + " ```"
-	return header
+	table.Render()
+	return sb.String()
 }
 
 func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) error {
@@ -104,7 +107,7 @@ func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.Hash)
 	for _, words := range KeyWords {
 		coin := words[0]
-		compiler := &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
+		compiler := sentiment.NewCompiler()
 		if b.SentimentCompiler[coin] == nil {
 			b.SentimentCompiler[coin] = compiler
 		}
@@ -133,7 +136,7 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 	}
 	if s.Sentiment != nil {
 		if b.SentimentCompiler[s.Coin] == nil {
-			b.SentimentCompiler[s.Coin] = &sentiment.Compiler{Items: make(map[string]*sentiment.Sentiment, 0)}
+			b.SentimentCompiler[s.Coin] = sentiment.NewCompiler()
 		}
 		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", hashBytes)] = s
 	}
