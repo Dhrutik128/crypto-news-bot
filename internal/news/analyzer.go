@@ -146,7 +146,7 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 		s := &sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
 		err := b.categorize(s)
 		if err != nil {
-			return
+			continue
 		}
 		if s.Sentiment != nil {
 			broadCastSentiment(s, b.Channels.BroadCastChannel)
