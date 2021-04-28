@@ -1,19 +1,16 @@
 package news
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/drankou/go-vader/vader"
 	"github.com/gohumble/crypto-news-bot/internal/sentiment"
 	"github.com/mmcdole/gofeed"
 	"github.com/prologic/bitcask"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/tucnak/telebot.v2"
 	"strings"
 	"sync"
-)
-
-import (
-	"encoding/json"
-	"fmt"
-	log "github.com/sirupsen/logrus"
 	"time"
 )
 
