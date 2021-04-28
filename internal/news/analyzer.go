@@ -94,13 +94,16 @@ func (b *Analyzer) GetSentimentTable() string {
 }
 
 func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) *sentiment.Sentiment {
-	b.Mutex.Lock()
 	if !b.Db.Has(sentiment.Key()) {
+		b.Mutex.Lock()
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)
+		b.Mutex.Unlock()
 	}
-	b.Mutex.Unlock()
-	return sentiment
+	if sentiment.Sentiment != nil {
+		return sentiment
+	}
+	return nil
 }
 func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.Hash)
@@ -152,8 +155,10 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	for _, feedItem := range feed.Items {
 		s := b.categorize(&sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink})
-		broadCastSentiment(s, b.Channels.BroadCastChannel)
-		saveSentiment(s, b.Db)
+		if s != nil {
+			broadCastSentiment(s, b.Channels.BroadCastChannel)
+			saveSentiment(s, b.Db)
+		}
 	}
 	for _, compiler := range b.SentimentCompiler {
 		compiler.Compile()
