@@ -39,20 +39,21 @@ func initNewsHandler(bot *tb.Bot, db *bitcask.Bitcask, feed *news.Analyzer) {
 
 func SendNews(c *tb.Callback, bot *tb.Bot, newsFeed *news.Analyzer) {
 	if c.Data != "" {
-		log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("sending latest news to %s", c.Sender.Username)
-		bot.Send(c.Sender, fmt.Sprintf("Hi %s \n*sending all processed news for %s*\n", c.Sender.Username, c.Data), tb.ModeMarkdownV2)
-		latestNews := newsFeed.SentimentCompiler[c.Data].GetNews()
-		for _, n := range latestNews {
-			text := fmt.Sprintf("[*_Broadcasting latest %s News_*](%s)\n\n*Title:* %s\n*Published:* %s\n*Sentiment:* %s\n",
-				n.Coin,
-				markdownEscape(n.FeedItem.Link),
-				markdownEscape(n.FeedItem.Title),
-				markdownEscape(n.FeedItem.Published),
-				markdownEscape(fmt.Sprintf("%f",
-					n.Sentiment["compound"])))
-			_, err := bot.Send(c.Sender, text, tb.ModeMarkdownV2)
-			if err != nil {
-				log.WithFields(log.Fields{"error": err.Error()}).Errorf("could not sent news")
+		if newsFeed.SentimentCompiler[c.Data] != nil {
+			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("sending latest news to %s", c.Sender.Username)
+			bot.Send(c.Sender, fmt.Sprintf("Hi %s \n*sending all processed news for %s*\n", c.Sender.Username, c.Data), tb.ModeMarkdownV2)
+			latestNews := newsFeed.SentimentCompiler[c.Data].GetNews()
+			for _, n := range latestNews {
+				text := fmt.Sprintf("\n[*_%s_*](%s)\n\n*Published:* %s\n*Sentiment:* %s\n",
+					markdownEscape(n.FeedItem.Title),
+					markdownEscape(n.FeedItem.Link),
+					markdownEscape(n.FeedItem.Published),
+					markdownEscape(fmt.Sprintf("%f",
+						n.Sentiment["compound"])))
+				_, err := bot.Send(c.Sender, text, tb.ModeMarkdownV2)
+				if err != nil {
+					log.WithFields(log.Fields{"error": err.Error()}).Errorf("could not sent news")
+				}
 			}
 		}
 	}
