@@ -84,9 +84,9 @@ type Channels struct {
 
 func (b *Analyzer) GetSentimentTable() string {
 	header := "```| Symbol | Sentiment |\n|--------|-------|\n"
-	for i, coin := range b.SentimentCompiler {
-		if len(coin.Items) > 0 {
-			header = header + fmt.Sprintf("| %s | %f |\n", i, coin.Avg)
+	for coin, compiler := range b.SentimentCompiler {
+		if len(compiler.Items) > 0 {
+			header = header + fmt.Sprintf("| %s | %f |\n", coin, compiler.Avg)
 		}
 	}
 	header = header + " ```"
@@ -95,7 +95,6 @@ func (b *Analyzer) GetSentimentTable() string {
 
 func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) *sentiment.Sentiment {
 	b.Mutex.Lock()
-
 	if !b.Db.Has(sentiment.Key()) {
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)

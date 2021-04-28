@@ -47,7 +47,7 @@ func (c *Compiler) Compile() {
 	for _, item := range c.Items {
 		sum = sum + item.Sentiment["compound"]
 	}
-	c.Avg = (c.Avg + sum) / float64(len(c.Items))
+	c.Avg = sum / float64(len(c.Items))
 }
 func (c Compiler) string() string {
 	return fmt.Sprintf("%f", c.Avg)
