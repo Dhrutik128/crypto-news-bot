@@ -11,7 +11,7 @@
 
 
 ## Getting started
-The latest version is always running at [@crypto-news-bot](https://t.me/crypstream_bot). You can subscribe to this bot or deploy your own bot using. [@BotFather](https://t.me/BotFather)
+The latest version is always running at [@crypto-news-bot](https://t.me/crypstream_bot). You can subscribe to this bot or deploy your own bot using [@BotFather](https://t.me/BotFather)
 
 ## Usage
 Send ``/start`` to start the bot. By default, you rss feed list is set to the top 100 crypto rss feeds.
@@ -26,8 +26,8 @@ You can add and remove multiple feeds by providing a comma separated list of rss
 ## Deployment 
 If you want to deploy your own instance, create a new bot using [@BotFather](https://t.me/BotFather). 
 1. Rename `config-example.yaml` to `config.yaml`
-2. Paste your Telegram API Token to the `config.yaml`
-3. Manage your default RSS feeds using `feeds.csv` 
+2. Paste your Telegram API Token to `config.yaml`
+3. Manage your default RSS feeds using `feeds.csv`
 4. Run `docker-compose up -d` to start the bot
 
 ## Planned 
