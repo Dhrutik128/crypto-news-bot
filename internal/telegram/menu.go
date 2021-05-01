@@ -51,12 +51,16 @@ func InitHandler(bot *tb.Bot, db *storage.DB, newsfeed *news.Analyzer) {
 				Started: time.Now()}
 
 			for _, feed := range news.DefaultFeed {
-				newsfeed.Feeds[feed].AddUser(user)
-				// case 2 -- feed already exists. user subscribes to existing feed!
-				err = storage.SetFeed(newsfeed.Feeds[feed], db)
-				if err != nil {
-					return
+				f := newsfeed.Feeds[feed]
+				if f != nil {
+					f.AddUser(user)
+					err = storage.SetFeed(f, db)
+					if err != nil {
+						return
+					}
 				}
+				// case 2 -- feed already exists. user subscribes to existing feed!
+
 			}
 
 			if db.Set(user) != nil {
