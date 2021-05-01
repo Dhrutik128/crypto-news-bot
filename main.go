@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"github.com/gohumble/crypto-news-bot/internal/news"
+	"github.com/gohumble/crypto-news-bot/internal/storage"
 	"github.com/gohumble/crypto-news-bot/internal/telegram"
 	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
+	"github.com/tidwall/buntdb"
 	"io"
 	"os"
 
@@ -17,7 +18,7 @@ import (
 type NewsBot struct {
 	NewsFeed *news.Analyzer
 	Telegram *tb.Bot
-	Db       *bitcask.Bitcask
+	Db       *storage.DB
 }
 
 func initLogger() {
@@ -36,11 +37,26 @@ func initLogger() {
 }
 func main() {
 	initLogger()
-	db, err := bitcask.Open("data")
+	db, err := buntdb.Open("./data/data.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = db.CreateIndex("user", "user_*", buntdb.IndexJSON("user.id"))
 	if err != nil {
 		panic(err)
 	}
-	bot := NewsBot{NewsFeed: news.NewAnalyzer(db, Config.RefreshRate), Db: db}
+	err = db.CreateIndex("feed", "feed_*", buntdb.IndexJSON("subscribers"))
+	if err != nil {
+		panic(err)
+	}
+	//err = db.CreateIndex("user_feed", "user_*", buntdb.IndexJSON("user.id"))
+	err = db.CreateIndex("sentiment", "sentiment_*", buntdb.IndexJSON("feed_item.publishedParsed"))
+	if err != nil {
+		panic(err)
+	}
+
+	database := &storage.DB{DB: db}
+	bot := NewsBot{NewsFeed: news.NewAnalyzer(database, Config.RefreshRate), Db: database}
 	bot.Telegram = telegram.New(bot.Db, bot.NewsFeed, Config.BotToken)
 	bot.Start()
 }

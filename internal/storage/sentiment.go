@@ -1,32 +1,33 @@
-package sentiment
+package storage
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"github.com/mmcdole/gofeed"
 	"github.com/olekukonko/tablewriter"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
+// a Sentiment is a analyzed single feed item
 type Sentiment struct {
-	Feed         string
-	FeedItem     *gofeed.Item
-	Sentiment    map[string]float64
-	Hash         []byte
-	Coin         string
-	WasBroadcast bool
+	// feed source
+	// todo -- may use storage.Feed here or at least use url.URL instead of string type
+	Feed string `json:"feed"`
+	// the feed item. (also included in storage.Feed)
+	FeedItem *gofeed.Item `json:"feed_item"`
+	// sentiment analysis for this item
+	Sentiment map[string]float64 `json:"sentiment"`
+	// hash key used for storage
+	HashKey []byte `json:"hash_key"`
+	// the coin
+	Coin string `json:"coin"`
+	// may be removed. was meant to prevent multiple broadcasts
+	WasBroadcast bool `json:"was_broadcast"`
 }
 
-func Save(sentiment *Sentiment, db *bitcask.Bitcask) {
-	sentimentBytes, err := json.Marshal(sentiment)
-	if err != nil {
-		log.WithFields(log.Fields{"module": "[PERSISTANCE]", "error": err.Error()}).Info("failed marshaling sentiment")
-		return
-	}
-	err = db.Put(sentiment.Hash, sentimentBytes)
+func SaveSentiment(sentiment *Sentiment, db *DB) {
+	err := db.Set(sentiment)
 	if err != nil {
 		log.WithFields(log.Fields{"module": "[PERSISTANCE]", "error": err.Error()}).Info("failed persisting sentiment")
 	}
@@ -43,14 +44,14 @@ func (s Sentiment) String() string {
 func (s *Sentiment) hash() {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v", s.FeedItem.Title)))
-	s.Hash = append([]byte("sentiment_"), h.Sum(nil)...)
+	s.HashKey = append([]byte("sentiment_"), h.Sum(nil)...)
 }
 func (s *Sentiment) Key() []byte {
-	if len(s.Hash) > 0 {
-		return s.Hash
+	if len(s.HashKey) > 0 {
+		return s.HashKey
 	} else {
 		s.hash()
-		return s.Hash
+		return s.HashKey
 	}
 
 }

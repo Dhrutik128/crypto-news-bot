@@ -1,9 +1,7 @@
 package storage
 
 import (
-	"encoding/json"
 	"fmt"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
 	"time"
@@ -11,26 +9,27 @@ import (
 
 type User struct {
 	// the telegram user
-	User *tb.User
+	User *tb.User `json:"user"`
 	// custom user settings
 	Settings UserSettings `json:"settings"`
 	// todo -- registration timestamp
-	Started time.Time
+	Started time.Time `json:"started"`
 	// todo -- last message sent to user timestamp
-	LastMessageSent time.Time
+	LastMessageSent time.Time `json:"last_message_sent"`
 	// todo -- last message received from user timestamp
-	LastMessageReceived time.Time
+	LastMessageReceived time.Time `json:"last_message_received"`
 }
 
 // used to store user settings
 type UserSettings struct {
-	Subscriptions map[string]bool `json:"subscriptions"`
-	Feeds         []string        `json:"feeds"`
+	Subscriptions           map[string]bool `json:"subscriptions"`
+	Feeds                   []string        `json:"feeds"`
+	IsDefaultFeedSubscribed bool            `json:"is_default_feed_subscribed"`
 }
 
 // check if user subscribed to feed url
 func (s UserSettings) IsFeedSubscribed(feed string) bool {
-
+	// todo -- check if feed is one of default
 	for _, userFeed := range s.Feeds {
 		if userFeed == feed {
 			return true
@@ -40,7 +39,7 @@ func (s UserSettings) IsFeedSubscribed(feed string) bool {
 }
 
 // add feed url to users feed subscription
-func (u *User) AddFeed(feed string, db *bitcask.Bitcask) error {
+func (u *User) AddFeed(feed string, db *DB) error {
 	alreadyAdded := false
 	for _, userFeed := range u.Settings.Feeds {
 		if feed == userFeed {
@@ -50,12 +49,16 @@ func (u *User) AddFeed(feed string, db *bitcask.Bitcask) error {
 	}
 	if !alreadyAdded {
 		u.Settings.Feeds = append(u.Settings.Feeds, feed)
-		return StoreUser(u, db)
+		return db.Set(u)
 	}
 	return fmt.Errorf("feed is already included in users feeds")
-
 }
-func (u *User) RemoveFeed(feed string, db *bitcask.Bitcask) error {
+func (u *User) ToggleDefaultFeed(db *DB) error {
+	u.Settings.IsDefaultFeedSubscribed = !u.Settings.IsDefaultFeedSubscribed
+	return db.Set(u)
+}
+
+func (u *User) RemoveFeed(feed string, db *DB) error {
 	removed := false
 	for i, userFeed := range u.Settings.Feeds {
 		if feed == userFeed {
@@ -65,7 +68,7 @@ func (u *User) RemoveFeed(feed string, db *bitcask.Bitcask) error {
 		}
 	}
 	if removed {
-		return StoreUser(u, db)
+		return db.Set(u)
 	}
 	return fmt.Errorf("no feed removed")
 }
@@ -96,42 +99,27 @@ func (u *User) RemoveSubscription(subscription string) {
 }
 
 // get user based ob telegram user
-func GetUser(u *tb.User, db *bitcask.Bitcask) (*User, error) {
+func GetUser(u *tb.User, db *DB) (*User, error) {
 	user := &User{User: u}
-	userBytes, err := db.Get(user.Key())
+	err := db.Get(user)
 	if err != nil {
 		log.Println(err)
 		return nil, fmt.Errorf("user not found")
 	}
-	err = json.Unmarshal(userBytes, user)
-	if err != nil {
-		log.Println(err)
-		return nil, fmt.Errorf("failed unmarshaling")
-	}
 	return user, nil
 }
 
-// store or update user
-func StoreUser(user *User, db *bitcask.Bitcask) error {
-	userByte, err := json.Marshal(user)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
-	return db.Put(user.Key(), userByte)
-}
-
 // checks if user is registered. If user is registered, function will return user.
-func UserRequired(user *tb.User, db *bitcask.Bitcask, bot *tb.Bot) (*User, error) {
+func UserRequired(user *tb.User, db *DB, bot *tb.Bot) (*User, error) {
 	u := User{User: user}
-	if !db.Has(u.Key()) {
+	if ok, _ := db.Exists(u); !ok {
 		bot.Send(user, "please run the command /start before using this bot")
 		return nil, fmt.Errorf("user not found")
 	}
 	return GetUser(user, db)
 }
 
-func DeleteUser(user *tb.User, db *bitcask.Bitcask) error {
+func DeleteUser(user *tb.User, db *DB) error {
 	u := User{User: user}
-	return db.Delete(u.Key())
+	return db.Delete(u)
 }

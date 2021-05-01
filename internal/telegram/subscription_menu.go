@@ -3,7 +3,6 @@ package telegram
 import (
 	"fmt"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -16,13 +15,13 @@ var (
 	SubscriptionMenu = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
 )
 
-func initSubscriptionHandler(bot *tb.Bot, db *bitcask.Bitcask) {
+func initSubscriptionHandler(bot *tb.Bot, db *storage.DB) {
 	SubscriptionButtons, SubscriptionButtonsMap = getKeywordButtons("sub_", SubscriptionMenu)
 	subscriptionSelector.Inline(ButtonWrapper(SubscriptionButtons, SubscriptionMenu)...)
 	// ### Subscribe Handler ###
 	bot.Handle(&btnSubscribe, func(m *tb.Message) {
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
-			bot.Send(m.Sender, "manage your news subscriptions", getButtonsForUser(user))
+			bot.Send(m.Sender, "manage your news subscriptions", getSubscriptionButtons(user))
 		}
 	})
 	// ### Inline Keyboard Subscription Handler ###
@@ -31,11 +30,11 @@ func initSubscriptionHandler(bot *tb.Bot, db *bitcask.Bitcask) {
 			if user, err := storage.UserRequired(c.Sender, db, bot); err == nil {
 				user.ToggleSubscription(c.Data)
 				log.WithFields(log.Fields{"module": "[TELEGRAM]", "coin": c.Data, "subscribed": user.Settings.Subscriptions[c.Data]}).Infof("updated subscription for %s", c.Sender.Username)
-				err = storage.StoreUser(user, db)
+				err = db.Set(user)
 				if err != nil {
 					fmt.Println(err)
 				}
-				newKeyboard := getButtonsForUser(user).InlineKeyboard
+				newKeyboard := getSubscriptionButtons(user).InlineKeyboard
 				//c.Message.ReplyMarkup.InlineKeyboard = newKeyboard
 				bot.EditReplyMarkup(c.Message, &tb.ReplyMarkup{InlineKeyboard: newKeyboard})
 			}

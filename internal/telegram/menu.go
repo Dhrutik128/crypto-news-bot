@@ -3,7 +3,6 @@ package telegram
 import (
 	"github.com/gohumble/crypto-news-bot/internal/news"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
 	"time"
@@ -27,7 +26,7 @@ var (
 	btnSentiments = menu.Text("/sentiments")
 )
 
-func InitHandler(bot *tb.Bot, db *bitcask.Bitcask, newsfeed *news.Analyzer) {
+func InitHandler(bot *tb.Bot, db *storage.DB, newsfeed *news.Analyzer) {
 	// Command: /start <PAYLOAD>
 	bot.Handle("/start", func(m *tb.Message) {
 		if !m.Private() {
@@ -43,16 +42,27 @@ func InitHandler(bot *tb.Bot, db *bitcask.Bitcask, newsfeed *news.Analyzer) {
 			return
 		}
 		user := storage.User{User: m.Sender}
-		if !db.Has(user.Key()) {
-			err := storage.StoreUser(&storage.User{
-				User:     m.Sender,
-				Settings: storage.UserSettings{Subscriptions: make(map[string]bool, 0), Feeds: news.DefaultFeed}, Started: time.Now()},
-				db)
-			if err != nil {
+		if ok, _ := db.Exists(user); !ok {
+			user := &storage.User{
+				User: m.Sender,
+				Settings: storage.UserSettings{
+					Subscriptions: make(map[string]bool, 0),
+					Feeds:         news.DefaultFeed},
+				Started: time.Now()}
+
+			for _, feed := range news.DefaultFeed {
+				newsfeed.Feeds[feed].AddUser(user)
+				// case 2 -- feed already exists. user subscribes to existing feed!
+				err = storage.SetFeed(newsfeed.Feeds[feed], db)
+				if err != nil {
+					return
+				}
+			}
+
+			if db.Set(user) != nil {
 				log.Println(err)
 			}
 		}
-
 	})
 	bot.Handle(&btnGit, func(m *tb.Message) {
 		bot.Send(m.Sender, "https://github.com/gohumble/crypto-news-bot")

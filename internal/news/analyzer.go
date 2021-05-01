@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/drankou/go-vader/vader"
-	"github.com/gohumble/crypto-news-bot/internal/sentiment"
+	"github.com/gohumble/crypto-news-bot/internal/config"
+	"github.com/gohumble/crypto-news-bot/internal/storage"
 	"github.com/mmcdole/gofeed"
 	"github.com/olekukonko/tablewriter"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
+	"github.com/tidwall/buntdb"
 	"gopkg.in/tucnak/telebot.v2"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -17,16 +19,16 @@ import (
 
 type Analyzer struct {
 	RefreshRate       time.Duration
-	Feeds             map[string]*gofeed.Feed
-	SentimentCompiler map[string]*sentiment.Compiler
+	Feeds             map[string]*storage.Feed
+	SentimentCompiler map[string]*storage.Compiler
 	Mutex             sync.Mutex
 	SentimentAnalyzer vader.SentimentIntensityAnalyzer
 	Channels          Channels
 	Sources           [][]string
-	Db                *bitcask.Bitcask
+	Db                *storage.DB
 }
 
-func NewAnalyzer(db *bitcask.Bitcask, refreshRate time.Duration) *Analyzer {
+func NewAnalyzer(db *storage.DB, refreshRate time.Duration) *Analyzer {
 	// initialize the vader sentiment analyzer first
 	sia := vader.SentimentIntensityAnalyzer{}
 	err := sia.Init("vader_lexicon.txt", "emoji_utf8_lexicon.txt")
@@ -38,15 +40,15 @@ func NewAnalyzer(db *bitcask.Bitcask, refreshRate time.Duration) *Analyzer {
 	//Either will be used in future or get deprecated.
 	c := Channels{
 		BroadCastChannel: make(chan BroadCast, 10),
-		SentimentChannel: make(chan *sentiment.Sentiment, 200),
+		SentimentChannel: make(chan *storage.Sentiment, 200),
 		FeedChannel:      make(chan *gofeed.Feed, 200)}
 
 	return &Analyzer{
 		RefreshRate:       refreshRate,
 		Db:                db,
 		Mutex:             sync.Mutex{},
-		Feeds:             make(map[string]*gofeed.Feed, 0),
-		SentimentCompiler: make(map[string]*sentiment.Compiler, 0),
+		Feeds:             make(map[string]*storage.Feed, 0),
+		SentimentCompiler: make(map[string]*storage.Compiler, 0),
 		SentimentAnalyzer: sia,
 		Channels:          c,
 	}
@@ -55,7 +57,7 @@ func NewAnalyzer(db *bitcask.Bitcask, refreshRate time.Duration) *Analyzer {
 
 type BroadCast struct {
 	User      *telebot.User
-	Sentiment *sentiment.Sentiment
+	Sentiment *storage.Sentiment
 }
 
 var KeyWords = [][]string{
@@ -76,7 +78,7 @@ var KeyWords = [][]string{
 
 type Channels struct {
 	FeedChannel      chan *gofeed.Feed
-	SentimentChannel chan *sentiment.Sentiment
+	SentimentChannel chan *storage.Sentiment
 	BroadCastChannel chan BroadCast
 }
 
@@ -93,8 +95,8 @@ func (b *Analyzer) GetSentimentTable() string {
 	return sb.String()
 }
 
-func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) error {
-	if !b.Db.Has(sentiment.Key()) {
+func (b *Analyzer) categorize(sentiment *storage.Sentiment) error {
+	if ok, _ := b.Db.Exists(sentiment); !ok {
 		b.Mutex.Lock()
 		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
 		b.categorizeFeedItem(sentiment)
@@ -103,11 +105,11 @@ func (b *Analyzer) categorize(sentiment *sentiment.Sentiment) error {
 	}
 	return fmt.Errorf("sentiment already in sotrage")
 }
-func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
-	itemHash := fmt.Sprintf("%x", s.Hash)
+func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
+	itemHash := fmt.Sprintf("%x", s.HashKey)
 	for _, words := range KeyWords {
 		coin := words[0]
-		compiler := sentiment.NewCompiler()
+		compiler := storage.NewCompiler()
 		if b.SentimentCompiler[coin] == nil {
 			b.SentimentCompiler[coin] = compiler
 		}
@@ -124,21 +126,13 @@ func (b *Analyzer) categorizeFeedItem(s *sentiment.Sentiment) {
 	}
 }
 
-func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
-	item, err := b.Db.Get(hashBytes)
-	if err != nil {
-		return err
-	}
-	s := &sentiment.Sentiment{}
-	err = json.Unmarshal(item, s)
-	if err != nil {
-		return err
-	}
+func (b *Analyzer) categorizeFeedItemFromStorage(object storage.Storable) error {
+	s := object.(*storage.Sentiment)
 	if s.Sentiment != nil {
 		if b.SentimentCompiler[s.Coin] == nil {
-			b.SentimentCompiler[s.Coin] = sentiment.NewCompiler()
+			b.SentimentCompiler[s.Coin] = storage.NewCompiler()
 		}
-		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", hashBytes)] = s
+		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", object.Key())] = s
 	}
 
 	return nil
@@ -146,7 +140,7 @@ func (b *Analyzer) categorizeFeedItemFromStorage(hashBytes []byte) error {
 
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	for _, feedItem := range feed.Items {
-		s := &sentiment.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
+		s := &storage.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
 		err := b.categorize(s)
 		if err != nil {
 			continue
@@ -154,25 +148,75 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 		if s.Sentiment != nil {
 			broadCastSentiment(s, b.Channels.BroadCastChannel)
 		}
-		sentiment.Save(s, b.Db)
+		storage.SaveSentiment(s, b.Db)
 	}
 	for _, compiler := range b.SentimentCompiler {
+		b.Mutex.Lock()
 		compiler.Compile()
+		b.Mutex.Unlock()
 	}
 
 }
 
 func (b *Analyzer) loadPersistedFeedItems() {
-	b.Db.Scan([]byte("sentiment_"), func(key []byte) error {
-		return b.categorizeFeedItemFromStorage(key)
+	// loading all processed feed items from past 3 days
+	err := b.Db.View(func(tx *buntdb.Tx) error {
+		err := tx.Descend("sentiment", func(key, value string) bool {
+			s := &storage.Sentiment{HashKey: []byte(key)}
+			err := json.Unmarshal([]byte(value), s)
+			if err != nil {
+				return true
+			}
+			// do not load news older than 3 days
+			if s.FeedItem.PublishedParsed.Before(time.Now().Add(-(time.Hour * 72))) {
+				return false
+			}
+			config.IgnoreError(b.categorizeFeedItemFromStorage(s))
+			return true
+		})
+		return err
 	})
-	for _, compiler := range b.SentimentCompiler {
-		compiler.Compile()
+	if err == nil {
+		// todo -- persist compiler instead of sentiment
+		// compiling processed feed items again...
+		for _, compiler := range b.SentimentCompiler {
+			compiler.Compile()
+		}
+	}
+	// load all feeds that users are subscribed to
+	config.IgnoreError(b.Db.View(func(tx *buntdb.Tx) error {
+		err := tx.Ascend("feed", func(key, value string) bool {
+			s := &storage.Feed{}
+			err := json.Unmarshal([]byte(value), s)
+			if err != nil {
+				return true
+			}
+			if len(s.Subscribers) > 0 {
+				b.Feeds[s.Source.Link] = s
+			}
+			return true
+		})
+		return err
+	}))
+	b.AddUserToDefaultFeeds(nil)
+
+}
+func (b *Analyzer) AddUserToDefaultFeeds(user *storage.User) {
+	if len(b.Feeds) == 0 {
+		for _, feed := range DefaultFeed {
+			feedUrl, err := url.Parse(feed)
+			if err != nil {
+				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not parse feed url")
+				continue
+			}
+			b.AddFeed(feedUrl, user)
+		}
 	}
 }
-
 func (b *Analyzer) Start() {
+	// this will load all feeds and processed feed items
 	b.loadPersistedFeedItems()
+	// start the download ticker for previously loaded feeds
 	b.startFeedDownloadTicker()
 }
 

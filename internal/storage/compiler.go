@@ -1,4 +1,4 @@
-package sentiment
+package storage
 
 import (
 	"fmt"
@@ -37,11 +37,9 @@ func (sc Compiler) GetNews() []*Sentiment {
 func (c *Compiler) Compile() {
 	if len(c.Items) > 0 {
 		var sum float64
-		c.Mutex.Lock()
 		for _, item := range c.Items {
 			sum = sum + item.Sentiment["compound"]
 		}
-		c.Mutex.Unlock()
 		c.Avg = sum / float64(len(c.Items))
 	}
 }

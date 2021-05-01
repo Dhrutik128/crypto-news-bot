@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/gohumble/crypto-news-bot/internal/news"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
 )
@@ -19,7 +18,7 @@ var (
 	btnBack = NewsMenu.Text("< Back")
 )
 
-func initNewsHandler(bot *tb.Bot, db *bitcask.Bitcask, feed *news.Analyzer) {
+func initNewsHandler(bot *tb.Bot, db *storage.DB, feed *news.Analyzer) {
 	NewsButtons, NewsButtonsMap = getKeywordButtons("news_", NewsMenu)
 	selector.Inline(ButtonWrapper(NewsButtons, selector)...)
 	bot.Handle(&NewsButton, func(m *tb.Message) {
