@@ -37,7 +37,7 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 		go func(feed *storage.Feed) {
 			if len(feed.Subscribers) > 0 {
 				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("Downloading RSS Feeds")
-				fetchedFeed, err := fetch(feed.Source.Link)
+				fetchedFeed, err := fetch(feed.Source.FeedLink)
 				if err != nil {
 					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed, "error": err.Error()}).Error("Failed downloading feed")
 					return
@@ -73,7 +73,7 @@ func broadCastSentiment(sentiment *storage.Sentiment, broadcastChannel chan Broa
 
 // download feeds and set lastDownloadTime
 func (b *Analyzer) tickerTryDownload() {
-	if b.tickerShouldDownloadFeed() {
+	if b.tickerShouldDownloadFeed() || true {
 		//b.downloadAndCategorizeFeeds(b.getFeeds())
 		b.downloadAndCategorizeFeeds()
 		b.Db.SetFeedLastDownloadTime(time.Now())
