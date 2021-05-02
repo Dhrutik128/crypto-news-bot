@@ -31,18 +31,19 @@ func StartBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan news.
 					log.Println(err)
 					return false
 				}
-				if user.Settings.Subscriptions[broadCast.Sentiment.Coin] && b.Feeds[broadCast.Sentiment.Feed].HasUser(user) {
-					broadCast.User = user.User
-					err := sendBroadCast(bot, broadCast)
-					if err != nil {
-
-						checkUserBlockedBot(err, broadCast.User, b.Db)
-						return false
+				feed := b.Feeds[broadCast.Sentiment.Feed]
+				if feed != nil && feed.HasUser(user) {
+					if user.Settings.Subscriptions[broadCast.Sentiment.Coin] {
+						broadCast.User = user.User
+						err := sendBroadCast(bot, broadCast)
+						if err != nil {
+							checkUserBlockedBot(err, broadCast.User, b.Db)
+							return false
+						}
+						log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", broadCast.Sentiment.FeedItem.Title, broadCast.User.Username)
+						return true
 					}
-					log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", broadCast.Sentiment.FeedItem.Title, broadCast.User.Username)
-					return true
 				}
-
 				return true
 			})
 			return err
