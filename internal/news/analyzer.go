@@ -139,8 +139,12 @@ func (b *Analyzer) categorizeFeedItemFromStorage(object storage.Storable) error 
 }
 
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
+	feedUrl, err := url.Parse(feed.FeedLink)
+	if err != nil {
+		return
+	}
 	for _, feedItem := range feed.Items {
-		s := &storage.Sentiment{FeedItem: feedItem, Feed: feed.FeedLink}
+		s := &storage.Sentiment{FeedItem: feedItem, Feed: feedUrl}
 		err := b.categorize(s)
 		if err != nil {
 			continue
@@ -192,7 +196,11 @@ func (b *Analyzer) loadPersistedFeedItems() {
 				return true
 			}
 			if len(s.Subscribers) > 0 {
-				b.Feeds[s.Source.Link] = s
+				feedUrl, err := url.Parse(s.Source.FeedLink)
+				if err != nil {
+					return true
+				}
+				b.Feeds[feedUrl.String()] = s
 			}
 			return true
 		})

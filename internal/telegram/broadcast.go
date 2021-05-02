@@ -31,7 +31,7 @@ func StartBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan news.
 					log.Println(err)
 					return false
 				}
-				feed := b.Feeds[broadCast.Sentiment.Feed]
+				feed := b.Feeds[broadCast.Sentiment.Feed.String()]
 				if feed != nil && feed.HasUser(user) {
 					if user.Settings.Subscriptions[broadCast.Sentiment.Coin] {
 						broadCast.User = user.User

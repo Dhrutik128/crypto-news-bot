@@ -6,6 +6,7 @@ import (
 	"github.com/mmcdole/gofeed"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
+	"net/url"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ import (
 type Sentiment struct {
 	// feed source
 	// todo -- may use storage.Feed here or at least use url.URL instead of string type
-	Feed string `json:"feed"`
+	Feed *url.URL `json:"feed"`
 	// the feed item. (also included in storage.Feed)
 	FeedItem *gofeed.Item `json:"feed_item"`
 	// sentiment analysis for this item
