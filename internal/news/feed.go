@@ -60,6 +60,9 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bo
 		if err != nil {
 			return err
 		}
+		if feed.FeedLink == "" && feed.Link != "" {
+			feed.FeedLink = feed.Link
+		}
 		// update the source if different from feed link
 		// using the feed link as source may protect us from issues when there is a redirect
 		// therefore using the feed link (from rss backend!) as source should avoid multiple links leading to same feed

@@ -31,10 +31,10 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 	for _, feed := range b.Feeds {
 		go func(feed *storage.Feed) {
 			if len(feed.Subscribers) > 0 {
-				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("Downloading RSS Feeds")
+				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("Downloading RSS Feeds")
 				fetchedFeed, err := fetch(feed.Source.FeedLink)
 				if err != nil {
-					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed, "error": err.Error()}).Error("Failed downloading feed")
+					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink, "error": err.Error()}).Error("Failed downloading feed")
 					return
 				}
 				// add the fresh feeds to slice.
@@ -47,7 +47,7 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 				b.Mutex.Unlock()*/
 				b.categorizeFeed(fetchedFeed)
 			} else {
-				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed}).Info("skipping feed. no subscriber")
+				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("skipping feed. no subscriber")
 			}
 
 		}(feed)
