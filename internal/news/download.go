@@ -37,6 +37,9 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink, "error": err.Error()}).Error("Failed downloading feed")
 					return
 				}
+				if fetchedFeed.FeedLink == "" {
+					fetchedFeed.FeedLink = feed.Source.FeedLink
+				}
 				b.categorizeFeed(fetchedFeed)
 			} else {
 				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("skipping feed. no subscriber")
