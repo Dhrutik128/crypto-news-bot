@@ -20,7 +20,7 @@ func init() {
 
 var DefaultFeed []string
 
-// this should remove the user from the feed object stored in the news analyzer
+// RemoveFeed should remove the user from the feed object stored in the news analyzer
 // if the removed user was the last one, we must also remove the feed from the analyzer and storage.
 // otherwise we would download feeds, that have no subscribers.
 func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
@@ -50,7 +50,7 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 
 }
 
-// if feed does not exists in the news analyzer, we should fetch the feed, add the current user
+// AddFeed if feed does not exists in the news analyzer, we should fetch the feed, add the current user
 // store the feed and run the analytics.
 // if feed is already included in the news analyzer, we just add the user and update the feed in storage.
 func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bool) error {
