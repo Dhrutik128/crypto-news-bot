@@ -84,7 +84,7 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bo
 				if err != nil {
 					return err
 				}
-				// we do categorize here because we freshly downloaded the feed. dont waste that data.
+				// we do shouldCategorize here because we freshly downloaded the feed. dont waste that data.
 				b.categorizeFeed(b.Feeds[source.String()].Source)
 				return nil
 			}
