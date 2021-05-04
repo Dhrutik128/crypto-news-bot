@@ -13,13 +13,14 @@ type Feed struct {
 	IsDefault   bool         `json:"is_default"`
 }
 
+// hash the feed struct using the feed link
 func (f *Feed) hash() {
 	h := sha256.New()
-	h.Write([]byte(fmt.Sprintf("%v", f.Source.Link)))
+	h.Write([]byte(fmt.Sprintf("%v", f.Source.FeedLink)))
 	f.HashKey = append([]byte("feed_"), h.Sum(nil)...)
 }
 
-// todo -- may wanna change the key to title ?
+// Key for storable
 func (f *Feed) Key() []byte {
 	if len(f.HashKey) > 0 {
 		return f.HashKey
@@ -29,11 +30,12 @@ func (f *Feed) Key() []byte {
 	}
 }
 
+// RemoveFeed from storage
 func (f *Feed) RemoveFeed(db *DB) error {
 	return db.Delete(f)
 }
 
-// initial import of feed. check if it is already imported / hash collision
+// ImportFeed initial import of feed. check if it is already imported / hash collision
 func ImportFeed(feed *Feed, db *DB) error {
 	if ok, _ := db.Exists(feed); !ok {
 		return SetFeed(feed, db)
@@ -41,6 +43,7 @@ func ImportFeed(feed *Feed, db *DB) error {
 	return fmt.Errorf("feed already exists")
 }
 
+// SetFeed for updating the feed in storage.
 func SetFeed(feed *Feed, db *DB) error {
 	items := feed.Source.Items
 	feed.Source.Items = nil
@@ -50,6 +53,13 @@ func SetFeed(feed *Feed, db *DB) error {
 	return db.Set(feed)
 }
 
+func removeInt(slice []int, i int) []int {
+	copy(slice[i:], slice[i+1:])
+	return slice[:len(slice)-1]
+}
+
+// RemoveUser from feed subscription.
+// currently this will not update the storable
 func (f *Feed) RemoveUser(user *User) {
 	if len(f.Subscribers) > 1 {
 		for i, u := range f.Subscribers {
@@ -62,11 +72,8 @@ func (f *Feed) RemoveUser(user *User) {
 	}
 }
 
-func removeInt(slice []int, i int) []int {
-	copy(slice[i:], slice[i+1:])
-	return slice[:len(slice)-1]
-}
-
+// AddUser to feed.
+// currently this will not update the storable
 func (f *Feed) AddUser(user *User) error {
 	alreadyAdded := false
 	for _, sub := range f.Subscribers {
@@ -82,6 +89,8 @@ func (f *Feed) AddUser(user *User) error {
 	return fmt.Errorf("user is already included in feed")
 
 }
+
+// HasUser returns true is user is subscribed to feed
 func (f Feed) HasUser(user User) bool {
 	for _, u := range f.Subscribers {
 		if u == user.User.ID {
