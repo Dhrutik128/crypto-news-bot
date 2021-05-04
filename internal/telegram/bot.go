@@ -14,6 +14,6 @@ func New(db *storage.DB, analyzer *news.Analyzer, token string) *tb.Bot {
 		panic(err)
 	}
 	InitHandler(bot, db, analyzer)
-	StartBroadCaster(analyzer, bot, analyzer.Channels.BroadCastChannel)
+	StartUserBroadCaster(analyzer, bot, analyzer.Channels.BroadCastChannel)
 	return bot
 }

@@ -170,6 +170,8 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 
 }
 
+// trySendBroadCast trough broadcastChannel. This broadcast does not contain a user yet.
+// users will be set by the broadcast receiver
 func trySendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCast) {
 	if !feedItem.WasBroadcast {
 		if feedItem.Item.PublishedParsed != nil {
