@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"github.com/gohumble/crypto-news-bot/internal/config"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
@@ -21,7 +22,7 @@ func initSubscriptionHandler(bot *tb.Bot, db *storage.DB) {
 	// ### Subscribe Handler ###
 	bot.Handle(&btnSubscribe, func(m *tb.Message) {
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
-			bot.Send(m.Sender, "manage your news subscriptions", getSubscriptionButtons(user))
+			config.IgnoreErrorMultiReturn(bot.Send(m.Sender, "manage your news subscriptions", getSubscriptionButtons(user)))
 		}
 	})
 	// ### Inline Keyboard Subscription Handler ###
@@ -35,8 +36,7 @@ func initSubscriptionHandler(bot *tb.Bot, db *storage.DB) {
 					fmt.Println(err)
 				}
 				newKeyboard := getSubscriptionButtons(user).InlineKeyboard
-				//c.Message.ReplyMarkup.InlineKeyboard = newKeyboard
-				bot.EditReplyMarkup(c.Message, &tb.ReplyMarkup{InlineKeyboard: newKeyboard})
+				config.IgnoreErrorMultiReturn(bot.EditReplyMarkup(c.Message, &tb.ReplyMarkup{InlineKeyboard: newKeyboard}))
 			}
 		})
 	}
