@@ -13,7 +13,7 @@ import (
 var markdownEscapes = []string{"_", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
 
 func sendBroadCast(bot *tb.Bot, b news.BroadCast) error {
-	text := fmt.Sprintf("[*_Broadcasting latest %s News_*](%s)\n\n*Title:* %s\n*Published:* %s\n*Sentiment:* %s\n", b.Sentiment.Coin, markdownEscape(b.Sentiment.FeedItem.Link), markdownEscape(b.Sentiment.FeedItem.Title), markdownEscape(b.Sentiment.FeedItem.Published), markdownEscape(fmt.Sprintf("%f", b.Sentiment.Sentiment["compound"])))
+	text := fmt.Sprintf("[*_Broadcasting latest %s News_*](%s)\n\n*Title:* %s\n*Published:* %s\n*Item:* %s\n", b.FeedItem.Coin, markdownEscape(b.FeedItem.Item.Link), markdownEscape(b.FeedItem.Item.Title), markdownEscape(b.FeedItem.Item.Published), markdownEscape(fmt.Sprintf("%f", b.FeedItem.Sentiment["compound"])))
 	_, err := bot.Send(b.User, text, tb.ModeMarkdownV2)
 	if err != nil {
 		return err
@@ -31,16 +31,16 @@ func StartBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan news.
 					log.Println(err)
 					return false
 				}
-				feed := b.Feeds[broadCast.Sentiment.Feed.String()]
+				feed := b.Feeds[broadCast.FeedItem.Feed.String()]
 				if feed != nil && feed.HasUser(user) {
-					if user.Settings.Subscriptions[broadCast.Sentiment.Coin] {
+					if user.Settings.Subscriptions[broadCast.FeedItem.Coin] {
 						broadCast.User = user.User
 						err := sendBroadCast(bot, broadCast)
 						if err != nil {
 							checkUserBlockedBot(err, broadCast.User, b.Db)
 							return false
 						}
-						log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", broadCast.Sentiment.FeedItem.Title, broadCast.User.Username)
+						log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", broadCast.FeedItem.Item.Title, broadCast.User.Username)
 						return true
 					}
 				}

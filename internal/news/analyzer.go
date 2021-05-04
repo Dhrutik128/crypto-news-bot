@@ -36,8 +36,8 @@ type Channels struct {
 
 // BroadCast struct contains the user and the analyzed feed item
 type BroadCast struct {
-	User      *telebot.User
-	Sentiment *storage.Sentiment
+	User     *telebot.User
+	FeedItem *storage.FeedItem
 }
 
 // NewAnalyzer returns a new Analyzer struct. It will not contain any feed information.
@@ -85,7 +85,7 @@ var KeyWords = [][]string{
 func (b *Analyzer) GetSentimentTable() string {
 	sb := &strings.Builder{}
 	table := tablewriter.NewWriter(sb)
-	table.SetHeader([]string{"Symbol", "Sentiment"})
+	table.SetHeader([]string{"Symbol", "FeedItem"})
 	for coin, compiler := range b.SentimentCompiler {
 		if len(compiler.Items) > 0 {
 			table.Append([]string{coin, fmt.Sprintf("%f", compiler.Avg)})
@@ -96,20 +96,20 @@ func (b *Analyzer) GetSentimentTable() string {
 }
 
 // shouldCategorize checks if the item was processed before
-func (b *Analyzer) shouldCategorize(sentiment *storage.Sentiment) error {
-	if ok, _ := b.Db.Exists(sentiment); !ok {
+func (b *Analyzer) shouldCategorize(feedItem *storage.FeedItem) error {
+	if ok, _ := b.Db.Exists(feedItem); !ok {
 		b.Mutex.Lock()
-		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": sentiment.FeedItem.Title}).Info("Categorizing new item")
-		b.categorizeFeedItem(sentiment)
+		log.WithFields(log.Fields{"module": "[ANALYZER]", "title": feedItem.Item.Title}).Info("Categorizing new item")
+		b.categorizeFeedItem(feedItem)
 		b.Mutex.Unlock()
 		return nil
 	}
-	return fmt.Errorf("sentiment already in sotrage")
+	return fmt.Errorf("feedItem already in sotrage")
 }
 
 // categorizeFeedItem by searching keywords and applying sentiment analysis when keywords match.
 // the categorized feed item is then updated within the sentiment compiler
-func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
+func (b *Analyzer) categorizeFeedItem(s *storage.FeedItem) {
 	itemHash := fmt.Sprintf("%x", s.HashKey)
 	// get all coin keywords
 	for _, words := range KeyWords {
@@ -119,13 +119,13 @@ func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
 			b.SentimentCompiler[coin] = compiler
 		}
 		if b.SentimentCompiler[coin].Items[itemHash] == nil {
-			if contains(s.FeedItem.Title, words) {
+			if contains(s.Item.Title, words) {
 				// feed title contains a coin keyword so we add sentiment analysis
-				s.Sentiment = b.SentimentAnalyzer.PolarityScores(s.FeedItem.Title)
+				s.Sentiment = b.SentimentAnalyzer.PolarityScores(s.Item.Title)
 				s.Coin = coin
 				compiler.Items[itemHash] = s
 				b.SentimentCompiler[coin].Items[itemHash] = compiler.Items[itemHash]
-				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.FeedItem.Title, "link": s.FeedItem.Link}).Info("successfully ran sentiment analysis")
+				log.WithFields(log.Fields{"module": "[ANALYZER]", "title": s.Item.Title, "link": s.Item.Link}).Info("successfully ran sentiment analysis")
 			}
 
 		}
@@ -134,7 +134,7 @@ func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
 
 // categorizeFeedItemFromStorage updates the feed item in the sentiment compiler
 func (b *Analyzer) categorizeFeedItemFromStorage(object storage.Storable) error {
-	s := object.(*storage.Sentiment)
+	s := object.(*storage.FeedItem)
 	if s.Sentiment != nil {
 		if b.SentimentCompiler[s.Coin] == nil {
 			b.SentimentCompiler[s.Coin] = storage.NewCompiler()
@@ -152,15 +152,15 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 		return
 	}
 	for _, feedItem := range feed.Items {
-		s := &storage.Sentiment{FeedItem: feedItem, Feed: feedUrl}
-		err := b.shouldCategorize(s)
+		item := &storage.FeedItem{Item: feedItem, Feed: feedUrl}
+		err := b.shouldCategorize(item)
 		if err != nil {
 			continue
 		}
-		if s.Sentiment != nil {
-			broadCastSentiment(s, b.Channels.BroadCastChannel)
+		if item.Sentiment != nil {
+			trySendBroadCast(item, b.Channels.BroadCastChannel)
 		}
-		storage.SaveSentiment(s, b.Db)
+		storage.SaveFeedItem(item, b.Db)
 	}
 	for _, compiler := range b.SentimentCompiler {
 		b.Mutex.Lock()
@@ -170,27 +170,39 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 
 }
 
+func trySendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCast) {
+	if !feedItem.WasBroadcast {
+		if feedItem.Item.PublishedParsed != nil {
+			if feedItem.Item.PublishedParsed.After(time.Now().Add(-(time.Hour * 24))) {
+				broadcastChannel <- BroadCast{FeedItem: feedItem}
+				// prevents sending same feed item in broadcast for another coin subscription
+				feedItem.WasBroadcast = true
+			}
+		}
+	}
+}
+
 // loadPersistedItems from storage and add them to news analyzer (when loading the application)
 func (b *Analyzer) loadPersistedItems() {
 	// loading all processed feed items from past 3 days
 	err := b.Db.View(func(tx *buntdb.Tx) error {
 		err := tx.Descend("sentiment", func(key, value string) bool {
-			s := &storage.Sentiment{HashKey: []byte(key)}
-			err := json.Unmarshal([]byte(value), s)
+			item := &storage.FeedItem{HashKey: []byte(key)}
+			err := json.Unmarshal([]byte(value), item)
 			if err != nil {
 				return true
 			}
 			// do not load news older than 3 days
-			if s.FeedItem.PublishedParsed.Before(time.Now().Add(-(time.Hour * 72))) {
+			if item.Item.PublishedParsed.Before(time.Now().Add(-(time.Hour * 72))) {
 				return false
 			}
-			config.IgnoreError(b.categorizeFeedItemFromStorage(s))
+			config.IgnoreError(b.categorizeFeedItemFromStorage(item))
 			return true
 		})
 		return err
 	})
 	if err == nil {
-		// todo -- persist compiler instead of sentiment
+		// note -- persist compiler instead of sentiment ?!
 		// compiling processed feed items again...
 		for _, compiler := range b.SentimentCompiler {
 			compiler.Compile()
@@ -199,17 +211,17 @@ func (b *Analyzer) loadPersistedItems() {
 	// load all feeds that users are subscribed to
 	config.IgnoreError(b.Db.View(func(tx *buntdb.Tx) error {
 		err := tx.Ascend("feed", func(key, value string) bool {
-			s := &storage.Feed{}
-			err := json.Unmarshal([]byte(value), s)
+			feed := &storage.Feed{}
+			err := json.Unmarshal([]byte(value), feed)
 			if err != nil {
 				return true
 			}
-			if len(s.Subscribers) > 0 {
-				feedUrl, err := url.Parse(s.Source.FeedLink)
+			if len(feed.Subscribers) > 0 {
+				feedUrl, err := url.Parse(feed.Source.FeedLink)
 				if err != nil {
 					return true
 				}
-				b.Feeds[feedUrl.String()] = s
+				b.Feeds[feedUrl.String()] = feed
 			}
 			return true
 		})

@@ -37,14 +37,6 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink, "error": err.Error()}).Error("Failed downloading feed")
 					return
 				}
-				// add the fresh feeds to slice.
-				if fetchedFeed.FeedLink != feed.Source.FeedLink {
-					fetchedFeed.FeedLink = feed.Source.FeedLink
-				}
-				// todo -- to increase efficiency, slice should only be updated, when fetched and stored feeds are not equal
-				/*b.Mutex.Lock()
-				b.Feeds[feed] = fetchedFeed
-				b.Mutex.Unlock()*/
 				b.categorizeFeed(fetchedFeed)
 			} else {
 				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("skipping feed. no subscriber")
@@ -54,21 +46,9 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 	}
 }
 
-func broadCastSentiment(sentiment *storage.Sentiment, broadcastChannel chan BroadCast) {
-	if !sentiment.WasBroadcast {
-		if sentiment.FeedItem.PublishedParsed != nil {
-			if sentiment.FeedItem.PublishedParsed.After(time.Now().Add(-(time.Hour * 24))) {
-				broadcastChannel <- BroadCast{Sentiment: sentiment}
-				// prevents sending same feed item in broadcast for another coin subscription
-				sentiment.WasBroadcast = true
-			}
-		}
-	}
-}
-
 // download feeds and set lastDownloadTime
 func (b *Analyzer) tickerTryDownload() {
-	if b.tickerShouldDownloadFeed() || true {
+	if b.tickerShouldDownloadFeed() {
 		//b.downloadAndCategorizeFeeds(b.getFeeds())
 		b.downloadAndCategorizeFeeds()
 		b.Db.SetFeedLastDownloadTime(time.Now())
@@ -90,7 +70,6 @@ func (b *Analyzer) tickerShouldDownloadFeed() bool {
 
 // first try to download all user feeds, then start a download ticker based on configurable refresh rate
 func (b *Analyzer) startFeedDownloadTicker() {
-
 	b.tickerTryDownload()
 	ticker := time.NewTicker(b.RefreshRate)
 	quit := make(chan struct{})
