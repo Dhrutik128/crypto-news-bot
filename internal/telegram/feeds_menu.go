@@ -13,7 +13,7 @@ import (
 
 var (
 	FeedsMenu     = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
-	FeedsButton   = FeedsMenu.Text("/feeds")
+	FeedsButton   = FeedsMenu.Text("/feed")
 	FeedsSelector = &tb.ReplyMarkup{}
 	//FeedsButtonsMap = make(map[string]tb.Btn, 0)
 	//FeedsButtons    = make([]tb.Btn, 0)
@@ -21,16 +21,16 @@ var (
 	helpText  = "Please provide a *comma seperated* list of  rss feed urls i should scrape for you. \n" +
 		"By default users are *subscribed* to top 100 crypto sites. \n" +
 		"\nUsage: \n" +
-		"/feeds *add {url}* - add a new rss feed to your subscriptions \n" +
-		"/feeds *remove {url}* - remove a rss feed from your subscriptions \n" +
-		"/feeds *list* - list all subscribed feeds\n" +
-		"/feeds *reset* - reset to default feed list\n"
+		"/feed *add {url}* - add a new rss feed to your subscriptions \n" +
+		"/feed *remove {url}* - remove a rss feed from your subscriptions \n" +
+		"/feed *list* - list all subscribed feeds\n" +
+		"/feed *reset* - reset to default feed list\n"
 )
 
 func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer, callback *tb.Callback) func(m *tb.Message) {
 	return func(m *tb.Message) {
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
-			if m.Text == "/feeds" {
+			if m.Text == "/feed" {
 				//markup := &tb.ReplyMarkup{}
 				//getDefaultFeedButtons("feeds_", menuItems, markup, user)
 				_, err := bot.Send(m.Sender, markdownEscape(helpText))
