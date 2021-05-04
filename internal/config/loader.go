@@ -32,7 +32,7 @@ func parseConfigurationJson(yamlData []byte) ([]byte, error) {
 	return jsonDoc, nil
 }
 
-// retrieves configuration in json format (converted from yaml into json)
+// Configure start the configuration based on the Configuration interface.
 func Configure(conf Configuration) {
 	// read the configuration file
 	cfgFile := conf.Path()
@@ -62,6 +62,7 @@ func unmarshalJson(in []byte, conf Configuration) {
 	}
 }
 
+// FileNameFromFlag
 // reads configflag from env (using fallback)
 // creates identifier '--CONFIGFLAG='
 // checks os.Args for flag occurrence.
