@@ -45,7 +45,7 @@ func (s FeedItem) String() string {
 func (s *FeedItem) hash() {
 	h := sha256.New()
 	h.Write([]byte(fmt.Sprintf("%v", s.Item.Title)))
-	s.HashKey = append([]byte("sentiment_"), h.Sum(nil)...)
+	s.HashKey = append([]byte("item_"), h.Sum(nil)...)
 }
 func (s *FeedItem) Key() []byte {
 	if len(s.HashKey) > 0 {

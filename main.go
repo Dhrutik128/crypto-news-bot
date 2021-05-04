@@ -50,7 +50,7 @@ func main() {
 		panic(err)
 	}
 	//err = db.CreateIndex("user_feed", "user_*", buntdb.IndexJSON("user.id"))
-	err = db.CreateIndex("sentiment", "sentiment_*", buntdb.IndexJSON("feed_item.publishedParsed"))
+	err = db.CreateIndex("item", "item_*", buntdb.IndexJSON("feed_item.publishedParsed"))
 	if err != nil {
 		panic(err)
 	}
