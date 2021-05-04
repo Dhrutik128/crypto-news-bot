@@ -7,14 +7,15 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 )
 
-func ButtonWrapper(buttons []tb.Btn, markup *tb.ReplyMarkup) []tb.Row {
-	length := len(buttons)
+// buttonWrapper wrap buttons slice in rows of length i
+func buttonWrapper(buttons []tb.Btn, markup *tb.ReplyMarkup, length int) []tb.Row {
+	buttonLength := len(buttons)
 	rows := make([]tb.Row, 0)
 
-	if length > 4 {
-		for i := 0; i < length; i = i + 4 {
+	if buttonLength > length {
+		for i := 0; i < buttonLength; i = i + length {
 			buttonRow := make([]tb.Btn, 4)
-			if i+4 < length {
+			if i+length < buttonLength {
 				buttonRow = buttons[i : i+4]
 			} else {
 				buttonRow = buttons[i:]
@@ -27,6 +28,7 @@ func ButtonWrapper(buttons []tb.Btn, markup *tb.ReplyMarkup) []tb.Row {
 	return rows
 }
 
+// getKeywordButtons returns buttons for every word defined in news.KeyWords
 func getKeywordButtons(uniquePrefix string, menu *tb.ReplyMarkup) ([]tb.Btn, map[string]tb.Btn) {
 	buttons := make([]tb.Btn, 0)
 	buttonMap := make(map[string]tb.Btn, 0)
@@ -38,6 +40,8 @@ func getKeywordButtons(uniquePrefix string, menu *tb.ReplyMarkup) ([]tb.Btn, map
 	return buttons, buttonMap
 }
 
+// getSubscriptionButtons based on the user coin subscriptions.
+// coin is prefixed with ✅ if its included in user subscriptions
 func getSubscriptionButtons(user *storage.User) *tb.ReplyMarkup {
 	var subButtonSlice = make([]tb.Btn, 0)
 	var subButtonSelector = &tb.ReplyMarkup{Selective: true}
@@ -51,10 +55,13 @@ func getSubscriptionButtons(user *storage.User) *tb.ReplyMarkup {
 			subButtonSlice = append(subButtonSlice, menu.Data(text, unique, text))
 		}
 	}
-	subButtonSelector.Inline(ButtonWrapper(subButtonSlice, menu)...)
+	subButtonSelector.Inline(buttonWrapper(subButtonSlice, menu, 4)...)
 	return subButtonSelector
 }
 
+// FEED BUTTONS ARE CURRENTLY NOT IN USE
+/*
+// getButtons from slice of strings
 func getButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup) ([]tb.Btn, map[string]tb.Btn) {
 	buttons := make([]tb.Btn, 0)
 	buttonMap := make(map[string]tb.Btn, 0)
@@ -66,8 +73,7 @@ func getButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup) ([]tb
 	return buttons, buttonMap
 }
 
-// FEED BUTTONS ARE CURRENTLY NOT IN USE
-/*func getDefaultFeedButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup, user *storage.User) ([]tb.Btn, map[string]tb.Btn) {
+func getDefaultFeedButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup, user *storage.User) ([]tb.Btn, map[string]tb.Btn) {
 	buttons, buttonsMap := getButtons(uniquePrefix, items, menu)
 	for i, button := range buttons {
 		if button.Data == "top100" {
@@ -80,7 +86,7 @@ func getButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup) ([]tb
 			}
 		}
 	}
-	menu.Inline(ButtonWrapper(buttons, menu)...)
+	menu.Inline(buttonWrapper(buttons, menu)...)
 	return buttons, buttonsMap
 }
 */

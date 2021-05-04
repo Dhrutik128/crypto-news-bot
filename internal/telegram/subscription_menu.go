@@ -18,7 +18,7 @@ var (
 
 func initSubscriptionHandler(bot *tb.Bot, db *storage.DB) {
 	SubscriptionButtons, SubscriptionButtonsMap = getKeywordButtons("sub_", SubscriptionMenu)
-	subscriptionSelector.Inline(ButtonWrapper(SubscriptionButtons, SubscriptionMenu)...)
+	subscriptionSelector.Inline(buttonWrapper(SubscriptionButtons, SubscriptionMenu, 4)...)
 	// ### Subscribe Handler ###
 	bot.Handle(&btnSubscribe, func(m *tb.Message) {
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {

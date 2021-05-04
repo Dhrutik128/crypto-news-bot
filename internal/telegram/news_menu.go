@@ -15,20 +15,19 @@ var (
 	selector       = &tb.ReplyMarkup{}
 	NewsButtonsMap = make(map[string]tb.Btn, 0)
 	NewsButtons    = make([]tb.Btn, 0)
-
-	btnBack = NewsMenu.Text("< Back")
+	btnBack        = NewsMenu.Text("< Back")
 )
 
 func initNewsHandler(bot *tb.Bot, db *storage.DB, feed *news.Analyzer) {
 	NewsButtons, NewsButtonsMap = getKeywordButtons("news_", NewsMenu)
-	selector.Inline(ButtonWrapper(NewsButtons, selector)...)
+	selector.Inline(buttonWrapper(NewsButtons, selector, 4)...)
 	bot.Handle(&NewsButton, func(m *tb.Message) {
 		config.IgnoreErrorMultiReturn(bot.Send(m.Sender, "Choose a coin", selector))
 	})
 	for _, btn := range NewsButtonsMap {
 		bot.Handle(&btn, func(c *tb.Callback) {
 			if _, err := storage.UserRequired(c.Sender, db, bot); err == nil {
-				SendNews(c, bot, feed)
+				sendNews(c, bot, feed)
 			}
 		})
 	}
@@ -37,7 +36,7 @@ func initNewsHandler(bot *tb.Bot, db *storage.DB, feed *news.Analyzer) {
 	})
 }
 
-func SendNews(c *tb.Callback, bot *tb.Bot, newsFeed *news.Analyzer) {
+func sendNews(c *tb.Callback, bot *tb.Bot, newsFeed *news.Analyzer) {
 	if c.Data != "" {
 		if newsFeed.SentimentCompiler[c.Data] != nil {
 			log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("sending latest news to %s", c.Sender.Username)
