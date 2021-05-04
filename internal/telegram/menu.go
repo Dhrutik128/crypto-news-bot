@@ -53,7 +53,10 @@ func InitHandler(bot *tb.Bot, db *storage.DB, newsfeed *news.Analyzer) {
 			for _, feed := range news.DefaultFeed {
 				f := newsfeed.Feeds[feed]
 				if f != nil {
-					f.AddUser(user)
+					err := f.AddUser(user)
+					if err != nil {
+						return
+					}
 					err = storage.SetFeed(f, db)
 					if err != nil {
 						return

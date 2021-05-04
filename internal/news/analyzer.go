@@ -107,6 +107,7 @@ func (b *Analyzer) categorize(sentiment *storage.Sentiment) error {
 }
 func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
 	itemHash := fmt.Sprintf("%x", s.HashKey)
+	// get all coin keywords
 	for _, words := range KeyWords {
 		coin := words[0]
 		compiler := storage.NewCompiler()
@@ -115,6 +116,7 @@ func (b *Analyzer) categorizeFeedItem(s *storage.Sentiment) {
 		}
 		if b.SentimentCompiler[coin].Items[itemHash] == nil {
 			if contains(s.FeedItem.Title, words) {
+				// feed title contains a coin keyword so we add sentiment analysis
 				s.Sentiment = b.SentimentAnalyzer.PolarityScores(s.FeedItem.Title)
 				s.Coin = coin
 				compiler.Items[itemHash] = s
@@ -217,7 +219,7 @@ func (b *Analyzer) AddUserToDefaultFeeds(user *storage.User) {
 				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not parse feed url")
 				continue
 			}
-			b.AddFeed(feedUrl, user)
+			b.AddFeed(feedUrl, user, true)
 		}
 	}
 }

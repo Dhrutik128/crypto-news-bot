@@ -31,11 +31,11 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 		if len(feed.Subscribers) == 0 {
 			// remove the feed from news analyzer, if no user is currently subscribed.
 			// this will prevent the bot from downloading feeds without users.
-			delete(b.Feeds, source.String())
-			err := b.Db.Delete(feed)
-			if err != nil {
-				return err
-			}
+			//delete(b.Feeds, source.String())
+			//err := b.Db.Delete(feed)
+			//if err != nil {
+			//	return err
+			//}
 		}
 		err := storage.SetFeed(feed, b.Db)
 		if err != nil {
@@ -53,7 +53,7 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 // if feed does not exists in the news analyzer, we should fetch the feed, add the current user
 // store the feed and run the analytics.
 // if feed is already included in the news analyzer, we just add the user and update the feed in storage.
-func (b *Analyzer) AddFeed(source *url.URL, user *storage.User) error {
+func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bool) error {
 	// case 1 -- new feed
 	if b.Feeds[source.String()] == nil {
 		feed, err := fetch(source.String())
@@ -65,11 +65,14 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User) error {
 			feed.FeedLink = source.String()
 		}
 
-		f := &storage.Feed{Source: *feed}
+		f := &storage.Feed{Source: *feed, IsDefault: isDefaultFeed}
 		if user != nil {
-			f.AddUser(user)
 
 			err := user.AddFeed(source.String(), b.Db)
+			if err != nil {
+				return err
+			}
+			err = f.AddUser(user)
 			if err != nil {
 				return err
 			}
@@ -84,9 +87,12 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User) error {
 
 	}
 	if user != nil {
-		b.Feeds[source.String()].AddUser(user)
 		// case 2 -- feed already exists. user subscribes to existing feed!
 		err := user.AddFeed(source.String(), b.Db)
+		if err != nil {
+			return err
+		}
+		err = b.Feeds[source.String()].AddUser(user)
 		if err != nil {
 			return err
 		}

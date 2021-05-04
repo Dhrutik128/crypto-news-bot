@@ -20,11 +20,6 @@ func fetch(source string) (*gofeed.Feed, error) {
 	return feed, nil
 }
 
-// download all feeds, that users have added
-func (b *Analyzer) downloadUserFeeds() {
-	//b.downloadAndCategorizeFeeds(b.getUserFeeds())
-
-}
 func (b *Analyzer) getFeeds() []string {
 	keys := make([]string, 0, len(b.Feeds))
 	for k := range b.Feeds {

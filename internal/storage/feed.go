@@ -10,6 +10,7 @@ type Feed struct {
 	HashKey     []byte      `json:"hash_key"`
 	Subscribers []int       `json:"subscribers"`
 	Source      gofeed.Feed `json:"source"`
+	IsDefault   bool        `json:"is_default"`
 }
 
 func (f *Feed) hash() {
@@ -66,8 +67,20 @@ func removeInt(slice []int, i int) []int {
 	return slice[:len(slice)-1]
 }
 
-func (f *Feed) AddUser(user *User) {
-	f.Subscribers = append(f.Subscribers, user.User.ID)
+func (f *Feed) AddUser(user *User) error {
+	alreadyAdded := false
+	for _, sub := range f.Subscribers {
+		if sub == user.User.ID {
+			alreadyAdded = true
+			break
+		}
+	}
+	if !alreadyAdded {
+		f.Subscribers = append(f.Subscribers, user.User.ID)
+		return nil
+	}
+	return fmt.Errorf("user is already included in feed")
+
 }
 func (f Feed) HasUser(user User) bool {
 	for _, u := range f.Subscribers {

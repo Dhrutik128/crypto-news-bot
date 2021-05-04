@@ -52,7 +52,7 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer, c
 							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
 							return
 						}
-						err = analyzer.AddFeed(u, user)
+						err = analyzer.AddFeed(u, user, false)
 						if err != nil {
 							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
 						}
