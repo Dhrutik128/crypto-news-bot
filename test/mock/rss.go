@@ -26,7 +26,7 @@ func StartFeedMocker() {
 
 		feed.Items = []*feeds.Item{
 			&feeds.Item{
-				Title:       "Bitcoin is nice! now",
+				Title:       "Bitcoin! is nice! now!!!!",
 				Link:        &feeds.Link{Href: "https://cointelegraph.com/news/bitcoin-bulls-respond-with-a-150m-short-squeeze-above-53k-can-btc-go-higher"},
 				Description: "A discussion on controlled parallelism in golang",
 				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
@@ -46,14 +46,14 @@ func StartFeedMocker() {
 				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
 				Created:     now,
 			}, &feeds.Item{
-				Title:       "BTC performance increased by 25%!",
+				Title:       "BTC !performance increased by 25%!",
 				Link:        &feeds.Link{Href: "https://cointelegraph.com/news/bitcoin-bulls-respond-with-a-150m-short-squeeze-above-53k-can-btc-go-higher"},
 				Description: "A discussion on controlled parallelism in golang",
 				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
 				Created:     now,
 			},
 			&feeds.Item{
-				Title:       "BTC now reaching new goal at moonstation!!!",
+				Title:       "BTC now r111eaching new goal at moonstation!!!",
 				Link:        &feeds.Link{Href: "http://jmoiron.net/blog/logicless-template-redux/"},
 				Description: "More thoughts on logicless templates",
 				Created:     now,
@@ -77,7 +77,7 @@ func StartFeedMocker() {
 				Created:     now.Add(-(time.Hour * 32)),
 			},
 			&feeds.Item{
-				Title:       "XRP surging to new all time high",
+				Title:       "XRP 17surging to new all time high!!!!!",
 				Link:        &feeds.Link{Href: "http://jmoiron.net/blog/idiomatic-code-reuse-in-go/"},
 				Description: "How to use interfaces <em>effectively</em>",
 				Created:     now.Add(-(time.Hour * 32)),
@@ -123,7 +123,14 @@ func StartFeedMocker() {
 
 		feed.Items = []*feeds.Item{
 			&feeds.Item{
-				Title:       "!YES XRP so bad that SEC lawsuit is fucked up",
+				Title:       "Giant! !Video Game P11rovide!1r Nexon Buys $100M Worth of XRP",
+				Link:        &feeds.Link{Href: "https://cointelegraph.com/news"},
+				Description: "A discussion on controlled parallelism in golang",
+				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
+				Created:     now,
+			},
+			&feeds.Item{
+				Title:       "!YES! XRP so bad !!1that SEC lawsuit is fucked up",
 				Link:        &feeds.Link{Href: "https://cointelegraph.com/news"},
 				Description: "A discussion on controlled parallelism in golang",
 				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
@@ -137,7 +144,7 @@ func StartFeedMocker() {
 				Created:     now,
 			},
 			&feeds.Item{
-				Title:       "Ripple labs SEC investigation rollup!!!!",
+				Title:       "Ripple!! 1labs SEC investigation rollup!!!!",
 				Link:        &feeds.Link{Href: "https://www.newsbtc.com/news/company/okex-insights-catallact-bitcoin-market-witness-the-growth-of-retail-participation-as-institutional-investors-continue-to-lead/"},
 				Description: "A discussion on controlled parallelism in golang",
 				Author:      &feeds.Author{Name: "Jason Moiron", Email: "jmoiron@jmoiron.net"},
@@ -155,13 +162,12 @@ func StartFeedMocker() {
 				Link:        &feeds.Link{Href: "http://jmoiron.net/blog/idiomatic-code-reuse-in-go/"},
 				Description: "How to use interfaces <em>effectively</em>",
 				Created:     now,
-			},&feeds.Item{
+			}, &feeds.Item{
 				Title:       "XLM to the top ",
 				Link:        &feeds.Link{Href: "http://jmoiron.net/blog/idiomatic-code-reuse-in-go/"},
 				Description: "How to use interfaces <em>effectively</em>",
 				Created:     now,
 			},
-
 		}
 
 		rss, err := feed.ToRss()

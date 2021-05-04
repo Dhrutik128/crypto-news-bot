@@ -2,16 +2,22 @@
 
 <p align="center"> A simple telegram bot that will help you stay updated on your latest crypto news 
 
+This bot will help you keep track of the latest news on your favorite cryptocurrency. 
+It reads multiple RSS feeds and groups all items by currency. These grouped items are then further processed using sentiment analysis.
+
+This analysis can help determine how positive or negative the news situation is.
+
 * [Getting started.](#getting-started)
 * [Usage.](#usage)
 * [Deployment.](#deployment)
 * [Planned.](#planned)
 * [Contribution.](#contribution)
 
-
-
 ## Getting started
-The latest version is always running at [@crypto-news-bot](https://t.me/crypstream_bot). You can subscribe to this bot or deploy your own bot using [@BotFather](https://t.me/BotFather)
+The latest release is always live at [@crypto-news-bot](https://t.me/crypstream_bot).
+
+You can start a chat with this bot or deploy your own bot using [@BotFather](https://t.me/BotFather)
+
 
 ## Usage
 Send ``/start`` to start the bot. By default, you rss feed list is set to the top 100 crypto rss feeds.
@@ -32,13 +38,11 @@ If you want to deploy your own instance, create a new bot using [@BotFather](htt
 
 ## Planned 
 * Huge code refactor to improve performance - remove redundant code - increase consistency 
-* Checkout persistence solutions. Using [Bitcast](https://github.com/prologic/bitcask) for convenience at the moment. This could cause some issues in the future. 
-* Improve logging. I'm thinking of fluentd + elasticsearch. This could also resolve the persistence issue.
-* Making keywords configurable by user. Currently, news categorization by coin uses a static list of keywords.This list should be configurable.
-* Improve news presentation for better readability.
-* Update instructions and help text. 
-* Improve sentiment analysis.
-* Read ALL news from single feed (not based on coin).
+* Improve logging.
+* Making keywords configurable by user. Currently, news categorization by currency using a static list of keywords. This list should be configurable.
+* Improve news and broadcast presentation for better readability.
+* Update instructions and help text.
+* Improve sentiment analysis (analyse content and not just the title).
 * Add tests 
 
 ## Contribution 

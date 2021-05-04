@@ -11,17 +11,24 @@ type Configuration struct {
 	RefreshRate time.Duration `yaml:"refresh_rate" json:"refresh_rate"`
 }
 
-// build global variables.
+// Config is the global bot configuration read from file.
 var Config Configuration
 
+func init() {
+	Config.Load()
+}
+
+// Load the configuration
 func (c *Configuration) Load() {
 	config.Configure(c)
 }
 
+// Path must return the path to configuration file (yaml or json)
 func (c *Configuration) Path() string {
-	return config.FileNameFromFlag("apiconfig", "config.yaml", "file path to the config")
+	return config.FileNameFromFlag("botconfig", "config.yaml", "file path to the config")
 }
 
+// Valid checks if configuration is valid
 func (c *Configuration) Valid() error {
 	if c.RefreshRate == 0 {
 		// default refresh rate is set to 1 hour
@@ -34,7 +41,4 @@ func (c *Configuration) Valid() error {
 		return errors.New("no telegram token provided")
 	}
 	return nil
-}
-func init() {
-	Config.Load()
 }

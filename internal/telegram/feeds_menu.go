@@ -2,9 +2,9 @@ package telegram
 
 import (
 	"fmt"
+	"github.com/gohumble/crypto-news-bot/internal/config"
 	"github.com/gohumble/crypto-news-bot/internal/news"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
-	"github.com/prologic/bitcask"
 	log "github.com/sirupsen/logrus"
 	tb "gopkg.in/tucnak/telebot.v2"
 	"net/url"
@@ -12,27 +12,26 @@ import (
 )
 
 var (
-	FeedsMenu       = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
-	FeedsButton     = FeedsMenu.Text("/feeds")
-	FeedsSelector   = &tb.ReplyMarkup{}
-	FeedsButtonsMap = make(map[string]tb.Btn, 0)
-	FeedsButtons    = make([]tb.Btn, 0)
-	menuItems       = []string{"reset", "list", "top100"}
-	helpText        = "Please provide a *comma seperated* list of  rss feed urls i should scrape for you. \n" +
+	FeedsMenu     = &tb.ReplyMarkup{ResizeReplyKeyboard: true}
+	FeedsButton   = FeedsMenu.Text("/feed")
+	FeedsSelector = &tb.ReplyMarkup{}
+	helpText      = "Please provide a *comma seperated* list of  rss feed urls i should scrape for you. \n" +
 		"By default users are *subscribed* to top 100 crypto sites. \n" +
 		"\nUsage: \n" +
-		"/feeds *add {url}* - add a new rss feed to your subscriptions \n" +
-		"/feeds *remove {url}* - remove a rss feed from your subscriptions \n" +
-		"/feeds *list* - list all subscribed feeds\n" +
-		"/feeds *reset* - reset to default feed list\n"
+		"/feed *add {url}* - add a new rss feed to your subscriptions \n" +
+		"/feed *remove {url}* - remove a rss feed from your subscriptions \n" +
+		"/feed *list* - list all subscribed feeds\n" +
+		"/feed *reset* - reset to default feed list\n"
 )
 
-func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyzer) func(m *tb.Message) {
+func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer) func(m *tb.Message) {
 	return func(m *tb.Message) {
-
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
-			if m.Text == "/feeds" {
-				bot.Send(m.Sender, markdownEscape(helpText), FeedsSelector, tb.ModeMarkdownV2)
+			if m.Text == "/feed" {
+				_, err := bot.Send(m.Sender, markdownEscape(helpText))
+				if err != nil {
+					fmt.Println(err)
+				}
 				return
 			}
 			s := strings.Split(m.Payload, " ")
@@ -42,15 +41,18 @@ func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyze
 					urls := s[1]
 					urlSlice := strings.Split(urls, ",")
 					for _, feedUrl := range urlSlice {
-						log.Print("adding ", feedUrl)
+
 						u, err := url.Parse(feedUrl)
 						if err != nil {
-							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+							config.IgnoreErrorMultiReturn(bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2))
 							return
 						}
-						err = analyzer.AddFeed(u, user)
+						log.Print("adding ", u.String())
+						log.Print("uri ", u.RequestURI())
+						log.Print("path ", u.EscapedPath())
+						err = analyzer.AddFeed(u, user, false)
 						if err != nil {
-							//bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+							config.IgnoreErrorMultiReturn(bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2))
 						}
 					}
 				case "remove":
@@ -60,46 +62,50 @@ func feedsButtonHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyze
 						log.Print("removing ", feedUrl)
 						u, err := url.Parse(feedUrl)
 						if err != nil {
-							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+							config.IgnoreErrorMultiReturn(bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2))
 							return
 						}
 						err = analyzer.RemoveFeed(u, user)
 						if err != nil {
-							//bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
+							config.IgnoreErrorMultiReturn(bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not remove feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2))
 						}
 					}
 				case "list":
-					inlineButtonsHandler(bot, db, analyzer, user, "list")
+					feeds := user.GetFeedsString(analyzer.Feeds)
+					if len(feeds) > 0 {
+						config.IgnoreErrorMultiReturn(
+							bot.Send(user.User,
+								markdownEscape(fmt.Sprintf("%s", strings.Join(unique(feeds), ", "))),
+								tb.ModeMarkdownV2))
+					}
 				case "reset":
-					inlineButtonsHandler(bot, db, analyzer, user, "reset")
+					for _, f := range user.GetFeedsString(analyzer.Feeds) {
+						analyzer.Feeds[f].RemoveUser(user)
+					}
+					analyzer.AddUserToDefaultFeeds(user)
+					err := db.Set(user)
+					if err != nil {
+						return
+					}
+					config.IgnoreErrorMultiReturn(bot.Send(user.User, "feed list set to default", tb.ModeMarkdownV2))
 				}
 			}
 		}
 	}
 }
-func inlineButtonsHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyzer, user *storage.User, command string) {
-	switch command {
-	case "reset":
-		user.Settings.Feeds = news.DefaultFeed
-		storage.StoreUser(user, db)
-		bot.Send(user.User, "feed list set to default", tb.ModeMarkdownV2)
-	case "top100":
-		bot.Send(user.User, markdownEscape(fmt.Sprintf("%s", strings.Join(news.DefaultFeed, ","))), tb.ModeMarkdownV2)
-	case "list":
-		bot.Send(user.User, markdownEscape(fmt.Sprintf("%s", strings.Join(user.Settings.Feeds, ","))), tb.ModeMarkdownV2)
+
+func unique(intSlice []string) []string {
+	keys := make(map[string]bool)
+	list := []string{}
+	for _, entry := range intSlice {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
 	}
+	return list
 }
-func initFeedsHandler(bot *tb.Bot, db *bitcask.Bitcask, analyzer *news.Analyzer) {
-	FeedsButtons, FeedsButtonsMap = getButtons("feeds_", menuItems, FeedsMenu)
-	FeedsSelector.Inline(ButtonWrapper(FeedsButtons, FeedsSelector)...)
-	bot.Handle(&FeedsButton, feedsButtonHandler(bot, db, analyzer))
-	for _, btn := range FeedsButtonsMap {
-		bot.Handle(&btn, func(c *tb.Callback) {
-			if user, err := storage.UserRequired(c.Sender, db, bot); err == nil {
-				if len(c.Data) > 0 {
-					inlineButtonsHandler(bot, db, analyzer, user, c.Data)
-				}
-			}
-		})
-	}
+
+func initFeedsHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer) {
+	bot.Handle(&FeedsButton, feedsCommandHandler(bot, db, analyzer))
 }

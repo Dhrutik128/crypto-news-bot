@@ -1,4 +1,4 @@
-package sentiment
+package storage
 
 import (
 	"fmt"
@@ -7,18 +7,18 @@ import (
 )
 
 type Compiler struct {
-	Items map[string]*Sentiment
+	Items map[string]*FeedItem
 	Avg   float64
 	Mutex *sync.Mutex
 }
 
 func NewCompiler() *Compiler {
-	return &Compiler{Mutex: &sync.Mutex{}, Items: make(map[string]*Sentiment, 0)}
+	return &Compiler{Mutex: &sync.Mutex{}, Items: make(map[string]*FeedItem, 0)}
 }
-func (sc Compiler) sorted() []*Sentiment {
+func (sc Compiler) sorted() []*FeedItem {
 	news := make(sortedNewsFeed, 0)
 	for _, s := range sc.Items {
-		if s.FeedItem.PublishedParsed == nil {
+		if s.Item.PublishedParsed == nil {
 			continue
 		}
 		news = append(news, s)
@@ -26,7 +26,7 @@ func (sc Compiler) sorted() []*Sentiment {
 	sort.Sort(news)
 	return news
 }
-func (sc Compiler) GetNews() []*Sentiment {
+func (sc Compiler) GetNews() []*FeedItem {
 	sortedNews := sc.sorted()
 	if len(sortedNews) > 10 {
 		return sortedNews[len(sortedNews)-10:]
@@ -37,11 +37,9 @@ func (sc Compiler) GetNews() []*Sentiment {
 func (c *Compiler) Compile() {
 	if len(c.Items) > 0 {
 		var sum float64
-		c.Mutex.Lock()
 		for _, item := range c.Items {
 			sum = sum + item.Sentiment["compound"]
 		}
-		c.Mutex.Unlock()
 		c.Avg = sum / float64(len(c.Items))
 	}
 }
