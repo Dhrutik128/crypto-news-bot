@@ -7,11 +7,11 @@ It reads multiple RSS feeds and groups all items by currency. These grouped item
 
 This analysis can help determine how positive or negative the news situation is.
 
-* [Getting started.](#getting-started)
-* [Usage.](#usage)
-* [Deployment.](#deployment)
-* [Planned.](#planned)
-* [Contribution.](#contribution)
+* [Getting started](#getting-started)
+* [Usage](#usage)
+* [Deployment](#deployment)
+* [Planned](#planned)
+* [Contribution](#contribution)
 
 ## Getting started
 The latest release is always live at [@crypto-news-bot](https://t.me/crypstream_bot).
