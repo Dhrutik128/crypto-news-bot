@@ -46,8 +46,7 @@ func InitHandler(bot *tb.Bot, db *storage.DB, newsfeed *news.Analyzer) {
 			user := &storage.User{
 				User: m.Sender,
 				Settings: storage.UserSettings{
-					Subscriptions: make(map[string]bool, 0),
-					Feeds:         news.DefaultFeed},
+					Subscriptions: make(map[string]bool, 0)},
 				Started: time.Now()}
 
 			for _, feed := range news.DefaultFeed {

@@ -42,10 +42,10 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 			return err
 		}
 	}
-	err := user.RemoveFeed(source.String(), b.Db)
+	/*err := user.RemoveFeed(source.String(), b.Db)
 	if err != nil {
 		return err
-	}
+	}*/
 	return b.Db.Set(user)
 
 }
@@ -60,18 +60,35 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bo
 		if err != nil {
 			return err
 		}
-		// update the feed link if this is not present in feed
+		// update the source if different from feed link
+		// using the feed link as source may protect us from issues when there is a redirect
+		// therefore using the feed link (from rss backend!) as source should avoid multiple links leading to same feed
 		if feed.FeedLink != source.String() {
-			feed.FeedLink = source.String()
-		}
-
-		f := &storage.Feed{Source: *feed, IsDefault: isDefaultFeed}
-		if user != nil {
-
-			err := user.AddFeed(source.String(), b.Db)
+			source, err = url.Parse(feed.FeedLink)
 			if err != nil {
 				return err
 			}
+			// recheck feeds with updated source link
+			if b.Feeds[source.String()] != nil {
+				// feed already imported so just check the user and add his subscription to feed
+				if user != nil {
+					err = b.Feeds[source.String()].AddUser(user)
+					if err != nil {
+						return err
+					}
+				}
+				err = storage.SetFeed(b.Feeds[source.String()], b.Db)
+				if err != nil {
+					return err
+				}
+				// we do categorize here because we freshly downloaded the feed. dont waste that data.
+				b.categorizeFeed(b.Feeds[source.String()].Source)
+				return nil
+			}
+		}
+		// feed does not exist yet
+		f := &storage.Feed{Source: feed, IsDefault: isDefaultFeed}
+		if user != nil {
 			err = f.AddUser(user)
 			if err != nil {
 				return err
@@ -88,11 +105,11 @@ func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bo
 	}
 	if user != nil {
 		// case 2 -- feed already exists. user subscribes to existing feed!
-		err := user.AddFeed(source.String(), b.Db)
+		/*err := user.AddFeed(source.String(), b.Db)
 		if err != nil {
 			return err
-		}
-		err = b.Feeds[source.String()].AddUser(user)
+		}*/
+		err := b.Feeds[source.String()].AddUser(user)
 		if err != nil {
 			return err
 		}

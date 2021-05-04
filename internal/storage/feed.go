@@ -7,10 +7,10 @@ import (
 )
 
 type Feed struct {
-	HashKey     []byte      `json:"hash_key"`
-	Subscribers []int       `json:"subscribers"`
-	Source      gofeed.Feed `json:"source"`
-	IsDefault   bool        `json:"is_default"`
+	HashKey     []byte       `json:"hash_key"`
+	Subscribers []int        `json:"subscribers"`
+	Source      *gofeed.Feed `json:"source"`
+	IsDefault   bool         `json:"is_default"`
 }
 
 func (f *Feed) hash() {

@@ -22,60 +22,32 @@ type User struct {
 
 // used to store user settings
 type UserSettings struct {
-	Subscriptions           map[string]bool `json:"subscriptions"`
-	Feeds                   []string        `json:"feeds"`
-	IsDefaultFeedSubscribed bool            `json:"is_default_feed_subscribed"`
+	Subscriptions map[string]bool `json:"subscriptions"`
 }
 
-// check if user subscribed to feed url
-func (s UserSettings) IsFeedSubscribed(feed string) bool {
-	// todo -- check if feed is one of default
-	for _, userFeed := range s.Feeds {
-		if userFeed == feed {
-			return true
+func (u User) GetFeeds(analyzerFeeds map[string]*Feed) []*Feed {
+	feeds := make([]*Feed, 0)
+	for _, feed := range analyzerFeeds {
+		for _, subscriber := range feed.Subscribers {
+			if subscriber == u.User.ID {
+				feeds = append(feeds, feed)
+				break
+			}
 		}
 	}
-	return false
+	return feeds
 }
-
-// add feed url to users feed subscription
-func (u *User) AddFeed(feed string, db *DB) error {
-	alreadyAdded := false
-	for _, userFeed := range u.Settings.Feeds {
-		if feed == userFeed {
-			alreadyAdded = true
-			break
+func (u User) GetFeedsString(analyzerFeeds map[string]*Feed) []string {
+	feeds := make([]string, 0)
+	for f, feed := range analyzerFeeds {
+		for _, subscriber := range feed.Subscribers {
+			if subscriber == u.User.ID {
+				feeds = append(feeds, f)
+				break
+			}
 		}
 	}
-	if !alreadyAdded {
-		u.Settings.Feeds = append(u.Settings.Feeds, feed)
-		return db.Set(u)
-	}
-	return fmt.Errorf("feed is already included in users feeds")
-}
-func (u *User) ToggleDefaultFeed(db *DB) error {
-	u.Settings.IsDefaultFeedSubscribed = !u.Settings.IsDefaultFeedSubscribed
-	return db.Set(u)
-}
-
-func (u *User) RemoveFeed(feed string, db *DB) error {
-	removed := false
-	for i, userFeed := range u.Settings.Feeds {
-		if feed == userFeed {
-			removed = true
-			u.Settings.Feeds = remove(u.Settings.Feeds, i)
-			break
-		}
-	}
-	if removed {
-		return db.Set(u)
-	}
-	return fmt.Errorf("no feed removed")
-}
-
-func remove(slice []string, i int) []string {
-	copy(slice[i:], slice[i+1:])
-	return slice[:len(slice)-1]
+	return feeds
 }
 
 // generate users database key

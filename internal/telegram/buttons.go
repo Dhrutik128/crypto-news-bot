@@ -67,7 +67,7 @@ func getButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup) ([]tb
 }
 
 // FEED BUTTONS ARE CURRENTLY NOT IN USE
-func getDefaultFeedButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup, user *storage.User) ([]tb.Btn, map[string]tb.Btn) {
+/*func getDefaultFeedButtons(uniquePrefix string, items []string, menu *tb.ReplyMarkup, user *storage.User) ([]tb.Btn, map[string]tb.Btn) {
 	buttons, buttonsMap := getButtons(uniquePrefix, items, menu)
 	for i, button := range buttons {
 		if button.Data == "top100" {
@@ -83,3 +83,4 @@ func getDefaultFeedButtons(uniquePrefix string, items []string, menu *tb.ReplyMa
 	menu.Inline(ButtonWrapper(buttons, menu)...)
 	return buttons, buttonsMap
 }
+*/

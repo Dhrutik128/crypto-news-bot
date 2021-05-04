@@ -46,12 +46,15 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer, c
 					urls := s[1]
 					urlSlice := strings.Split(urls, ",")
 					for _, feedUrl := range urlSlice {
-						log.Print("adding ", feedUrl)
+
 						u, err := url.Parse(feedUrl)
 						if err != nil {
 							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not parse %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
 							return
 						}
+						log.Print("adding ", u.String())
+						log.Print("uri ", u.RequestURI())
+						log.Print("path ", u.EscapedPath())
 						err = analyzer.AddFeed(u, user, false)
 						if err != nil {
 							bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2)
@@ -77,18 +80,18 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer, c
 					/*if user.Settings.IsDefaultFeedSubscribed {
 						feeds = append(feeds, news.DefaultFeed...)
 					}*/
-					if len(user.Settings.Feeds) > 0 {
+					feeds := user.GetFeedsString(analyzer.Feeds)
+					if len(feeds) > 0 {
 						config.IgnoreErrorMultiReturn(
 							bot.Send(user.User,
-								markdownEscape(fmt.Sprintf("%s", strings.Join(unique(user.Settings.Feeds), ", "))),
+								markdownEscape(fmt.Sprintf("%s", strings.Join(unique(feeds), ", "))),
 								tb.ModeMarkdownV2))
 					}
 					//inlineButtonsHandler(bot, db, callback, user, analyzer,"list")
 				case "reset":
-					for _, f := range user.Settings.Feeds {
+					for _, f := range user.GetFeedsString(analyzer.Feeds) {
 						analyzer.Feeds[f].RemoveUser(user)
 					}
-					user.Settings.Feeds = news.DefaultFeed
 					analyzer.AddUserToDefaultFeeds(user)
 					db.Set(user)
 					bot.Send(user.User, "feed list set to default", tb.ModeMarkdownV2)
