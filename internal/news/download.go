@@ -10,7 +10,6 @@ import (
 
 // download source and check if its a valid feed
 func fetch(source string) (*gofeed.Feed, error) {
-	time.Sleep(time.Second * 10)
 	fp := gofeed.NewParser()
 	ctx, c := context.WithTimeout(context.Background(), 15*time.Second)
 	defer c()
