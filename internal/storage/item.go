@@ -56,16 +56,17 @@ func (s *FeedItem) Key() []byte {
 
 }
 
-type sortedNewsFeed []*FeedItem
+// this type holds sortable feed items
+type sortableFeedItems []*FeedItem
 
-func (p sortedNewsFeed) Len() int {
+func (p sortableFeedItems) Len() int {
 	return len(p)
 }
 
-func (p sortedNewsFeed) Less(i, j int) bool {
+func (p sortableFeedItems) Less(i, j int) bool {
 	return p[i].Item.PublishedParsed.Before(p[j].Item.PublishedParsed.Local())
 }
 
-func (p sortedNewsFeed) Swap(i, j int) {
+func (p sortableFeedItems) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }

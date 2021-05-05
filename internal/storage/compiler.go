@@ -15,9 +15,9 @@ type Compiler struct {
 func NewCompiler() *Compiler {
 	return &Compiler{Mutex: &sync.Mutex{}, Items: make(map[string]*FeedItem, 0)}
 }
-func (sc Compiler) sorted() []*FeedItem {
-	news := make(sortedNewsFeed, 0)
-	for _, s := range sc.Items {
+func (c Compiler) sorted() []*FeedItem {
+	news := make(sortableFeedItems, 0)
+	for _, s := range c.Items {
 		if s.Item.PublishedParsed == nil {
 			continue
 		}
@@ -26,8 +26,8 @@ func (sc Compiler) sorted() []*FeedItem {
 	sort.Sort(news)
 	return news
 }
-func (sc Compiler) GetNews() []*FeedItem {
-	sortedNews := sc.sorted()
+func (c Compiler) GetNews() []*FeedItem {
+	sortedNews := c.sorted()
 	if len(sortedNews) > 10 {
 		return sortedNews[len(sortedNews)-10:]
 	}
