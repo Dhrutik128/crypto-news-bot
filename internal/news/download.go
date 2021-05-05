@@ -10,6 +10,7 @@ import (
 
 // download source and check if its a valid feed
 func fetch(source string) (*gofeed.Feed, error) {
+	time.Sleep(time.Second * 10)
 	fp := gofeed.NewParser()
 	ctx, c := context.WithTimeout(context.Background(), 15*time.Second)
 	defer c()
@@ -73,7 +74,6 @@ func (b *Analyzer) tickerShouldDownloadFeed() bool {
 
 // first try to download all user feeds, then start a download ticker based on configurable refresh rate
 func (b *Analyzer) startFeedDownloadTicker() {
-	b.tickerTryDownload()
 	ticker := time.NewTicker(b.RefreshRate)
 	quit := make(chan struct{})
 	go func() {

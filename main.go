@@ -62,6 +62,6 @@ func main() {
 }
 
 func (b *NewsBot) Start() {
-	go b.NewsFeed.Start()
+	b.NewsFeed.Start()
 	b.Telegram.Start()
 }
