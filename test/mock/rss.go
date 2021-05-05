@@ -53,7 +53,7 @@ func StartFeedMocker() {
 		feed.Items = []*feeds.Item{
 			{
 				Title:       "Giant Video Game provider Nexon Buys $100M Worth of XRP",
-				Link:        &feeds.Link{Href: "https://cointelegraph.com/news"},
+				Link:        &feeds.Link{Href: "https://www.livebitcoinnews.com/bitcoin-price-analysis-btc-faces-major-hurdle-dips-limited/"},
 				Description: "A discussion on xrp",
 				Author:      &feeds.Author{Name: "Some Author", Email: "author@nexon.com"},
 				Created:     now,
@@ -78,7 +78,7 @@ func StartFeedMocker() {
 		feed.Items = []*feeds.Item{
 			{
 				Title:       "$DOGE up 600% this month. ",
-				Link:        &feeds.Link{Href: "https://cointelegraph.com/news"},
+				Link:        &feeds.Link{Href: "https://cryptopotato.com/first-1200-us-stimulus-check-put-in-dogecoin-worth-over-400000-now/"},
 				Description: "A discussion on another shitcoin",
 				Author:      &feeds.Author{Name: "Some Author", Email: "author@nexon.com"},
 				Created:     now,
