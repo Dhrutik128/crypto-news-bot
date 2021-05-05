@@ -57,7 +57,7 @@ func (b *Analyzer) tickerShouldDownloadFeeds() bool {
 	lastDownloadTime := b.Db.GetFeedLastDownloadTime()
 	do := true
 	if !lastDownloadTime.IsZero() {
-		if lastDownloadTime.After(time.Now().Add(-(b.RefreshRate))) {
+		if lastDownloadTime.After(time.Now().Add(-(b.RefreshPeriodDuration))) {
 			do = false
 		}
 	}
@@ -66,7 +66,7 @@ func (b *Analyzer) tickerShouldDownloadFeeds() bool {
 
 // first try to download all user feeds, then start a download ticker based on configurable refresh rate
 func (b *Analyzer) startFeedDownloadTicker() {
-	ticker := time.NewTicker(b.RefreshRate)
+	ticker := time.NewTicker(b.RefreshPeriodDuration)
 	quit := make(chan struct{})
 	go func() {
 		for {

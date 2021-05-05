@@ -55,14 +55,15 @@ var KeyWords = [][]string{
 
 // Analyzer will hold all feeds and their analyzed items (sentiments)
 type Analyzer struct {
-	RefreshRate       time.Duration
-	Feeds             map[string]*storage.Feed
-	SentimentCompiler map[string]*storage.Compiler
-	Mutex             sync.Mutex
-	SentimentAnalyzer vader.SentimentIntensityAnalyzer
-	Channels          Channels
-	Sources           [][]string
-	Db                *storage.DB
+	RefreshPeriodDuration time.Duration
+	NewsStorageDuration   time.Duration
+	Feeds                 map[string]*storage.Feed
+	SentimentCompiler     map[string]*storage.Compiler
+	Mutex                 sync.Mutex
+	SentimentAnalyzer     vader.SentimentIntensityAnalyzer
+	Channels              Channels
+	Sources               [][]string
+	Db                    *storage.DB
 }
 
 // Channels BroadCastChannel accepts Broadcasts that will be sent to users if relevant.
@@ -77,7 +78,7 @@ type BroadCast struct {
 }
 
 // NewAnalyzer returns a new Analyzer struct. It will not contain any feed information.
-func NewAnalyzer(db *storage.DB, refreshRate time.Duration) *Analyzer {
+func NewAnalyzer(db *storage.DB, refreshRate time.Duration, storageDuration time.Duration) *Analyzer {
 	// initialize the vader sentiment analyzer first
 	sia := vader.SentimentIntensityAnalyzer{}
 	err := sia.Init("vader_lexicon.txt", "emoji_utf8_lexicon.txt")
@@ -89,13 +90,14 @@ func NewAnalyzer(db *storage.DB, refreshRate time.Duration) *Analyzer {
 	c := Channels{BroadCastChannel: make(chan BroadCast, 10)}
 
 	return &Analyzer{
-		RefreshRate:       refreshRate,
-		Db:                db,
-		Mutex:             sync.Mutex{},
-		Feeds:             make(map[string]*storage.Feed, 0),
-		SentimentCompiler: make(map[string]*storage.Compiler, 0),
-		SentimentAnalyzer: sia,
-		Channels:          c,
+		RefreshPeriodDuration: refreshRate,
+		NewsStorageDuration:   storageDuration,
+		Db:                    db,
+		Mutex:                 sync.Mutex{},
+		Feeds:                 make(map[string]*storage.Feed, 0),
+		SentimentCompiler:     make(map[string]*storage.Compiler, 0),
+		SentimentAnalyzer:     sia,
+		Channels:              c,
 	}
 
 }
@@ -262,20 +264,31 @@ func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 		return
 	}
 	for _, feedItem := range feed.Items {
-		item := &storage.FeedItem{Item: feedItem, Feed: feedUrl}
-		err := b.shouldCategorize(item)
-		if err != nil {
+		if feedItem.PublishedParsed != nil {
+			// check if item is older than NewStorageDuration from configuration
+			if feedItem.PublishedParsed.Local().After(time.Now().Add(-(b.NewsStorageDuration)).Local()) {
+				item := &storage.FeedItem{Item: feedItem, Feed: feedUrl}
+				err := b.shouldCategorize(item)
+				if err != nil {
+					continue
+				}
+				if item.Sentiment != nil {
+					trySendBroadCast(item, b.Channels.BroadCastChannel)
+				}
+				storage.SaveFeedItem(item, b.Db)
+				continue
+			}
+			log.WithFields(log.Fields{"item": feedItem.Link, "feed": feed.FeedLink, "published": feedItem.PublishedParsed.Local().String()}).Warn("feed item is to old. skipping...")
 			continue
 		}
-		if item.Sentiment != nil {
-			trySendBroadCast(item, b.Channels.BroadCastChannel)
-		}
-		storage.SaveFeedItem(item, b.Db)
+		log.WithFields(log.Fields{"item": feedItem.Link, "feed": feed.FeedLink, "published": feedItem.Published}).Warn("feed item has no published date. skipping...")
 	}
 	for _, compiler := range b.SentimentCompiler {
-		b.Mutex.Lock()
-		compiler.Compile()
-		b.Mutex.Unlock()
+		if len(compiler.Items) > 0 {
+			b.Mutex.Lock()
+			compiler.Compile()
+			b.Mutex.Unlock()
+		}
 	}
 
 }
@@ -286,26 +299,29 @@ func trySendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCas
 	if !feedItem.WasBroadcast {
 		if feedItem.Item.PublishedParsed != nil {
 			if feedItem.Item.PublishedParsed.After(time.Now().Add(-(time.Hour * 24))) {
-				broadcastChannel <- BroadCast{FeedItem: feedItem}
-				// prevents sending same feed item in broadcast for another coin subscription
-				feedItem.WasBroadcast = true
+				sendBroadCast(feedItem, broadcastChannel)
 			}
 		}
 	}
+}
+func sendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCast) {
+	broadcastChannel <- BroadCast{FeedItem: feedItem}
+	// prevents sending same feed item in broadcast for another coin subscription
+	feedItem.WasBroadcast = true
 }
 
 // loadPersistedItems from storage and add them to news analyzer (when loading the application)
 func (b *Analyzer) loadPersistedItems() {
 	// loading all processed feed items from past 3 days
 	err := b.Db.View(func(tx *buntdb.Tx) error {
-		err := tx.Descend("sentiment", func(key, value string) bool {
+		err := tx.Descend("item", func(key, value string) bool {
 			item := &storage.FeedItem{HashKey: []byte(key)}
 			err := json.Unmarshal([]byte(value), item)
 			if err != nil {
 				return true
 			}
 			// do not load news older than 3 days
-			if item.Item.PublishedParsed.Before(time.Now().Add(-(time.Hour * 72))) {
+			if item.Item.PublishedParsed.Before(time.Now().Add(-(b.NewsStorageDuration))) {
 				return false
 			}
 			config.IgnoreError(b.categorizeFeedItemFromStorage(item))

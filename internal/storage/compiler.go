@@ -35,13 +35,11 @@ func (sc Compiler) GetNews() []*FeedItem {
 }
 
 func (c *Compiler) Compile() {
-	if len(c.Items) > 0 {
-		var sum float64
-		for _, item := range c.Items {
-			sum = sum + item.Sentiment["compound"]
-		}
-		c.Avg = sum / float64(len(c.Items))
+	var sum float64
+	for _, item := range c.Items {
+		sum = sum + item.Sentiment["compound"]
 	}
+	c.Avg = sum / float64(len(c.Items))
 }
 func (c Compiler) string() string {
 	return fmt.Sprintf("%f", c.Avg)

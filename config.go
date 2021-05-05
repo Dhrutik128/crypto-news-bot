@@ -26,7 +26,7 @@ func (c *Configuration) Load() {
 
 // Path must return the path to configuration file (yaml or json)
 func (c *Configuration) Path() string {
-	return config.FileNameFromFlag("botconfig", "config.yaml", "file path to the config")
+	return config.FileNameFromFlag("config", "config.yaml", "file path to the config")
 }
 
 // Valid checks if configuration is valid
@@ -38,6 +38,13 @@ func (c *Configuration) Valid() error {
 		// refresh rate resolution is 1 minute
 		c.RefreshPeriodDuration = c.RefreshPeriodDuration * time.Minute
 	}
+	if c.NewsStorageDuration == 0 {
+		// default store news for maximum of 24 hours
+		c.NewsStorageDuration = time.Hour * 24
+	} else {
+		c.NewsStorageDuration = c.NewsStorageDuration * time.Minute
+	}
+
 	if c.BotToken == "" {
 		return errors.New("no telegram token provided")
 	}

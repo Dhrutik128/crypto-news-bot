@@ -10,10 +10,9 @@ import (
 	"strings"
 )
 
-// a FeedItem is a analyzed single feed item
+// FeedItem is a analyzed single feed item
 type FeedItem struct {
 	// feed source
-	// todo -- may use storage.Feed here or at least use url.URL instead of string type
 	Feed *url.URL `json:"feed"`
 	// the feed item. (also included in storage.Feed)
 	Item *gofeed.Item `json:"item"`
