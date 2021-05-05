@@ -56,7 +56,7 @@ func main() {
 	}
 
 	database := &storage.DB{DB: db}
-	bot := NewsBot{NewsFeed: news.NewAnalyzer(database, Config.RefreshRate), Db: database}
+	bot := NewsBot{NewsFeed: news.NewAnalyzer(database, Config.RefreshPeriodDuration), Db: database}
 	bot.Telegram = telegram.New(bot.Db, bot.NewsFeed, Config.BotToken)
 	bot.Start()
 }
