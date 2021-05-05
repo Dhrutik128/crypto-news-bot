@@ -47,6 +47,10 @@ var KeyWords = [][]string{
 	{"FIL", "Filecoin"},
 	{"Uniswap", "uniswap", "UniSwap"},
 	{"BTG", "Bitcoin Gold", "BITCOIN GOLD"},
+	{"SC", "Siacoin", "Sia Coin", "Sia coin"},
+	{"DOT", "Polkadot"},
+	{"NEO", "Neo Coin"},
+	{"SXP", "Swipe"},
 }
 
 // Analyzer will hold all feeds and their analyzed items (sentiments)
