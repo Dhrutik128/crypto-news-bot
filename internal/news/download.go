@@ -32,12 +32,14 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 	for _, feed := range b.Feeds {
 		go func(feed *storage.Feed) {
 			if len(feed.Subscribers) > 0 {
+				// TODO -- check here if the feeds last download timestamp is older that x
 				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("Downloading RSS Feeds")
 				fetchedFeed, err := fetch(feed.Source.FeedLink)
 				if err != nil {
 					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink, "error": err.Error()}).Error("Failed downloading feed")
 					return
 				}
+				feed.DownloadTimestamp = time.Now()
 				if fetchedFeed.FeedLink == "" {
 					fetchedFeed.FeedLink = feed.Source.FeedLink
 				}
@@ -50,17 +52,8 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 	}
 }
 
-// download feeds and set lastDownloadTime
-func (b *Analyzer) tickerTryDownload() {
-	if b.tickerShouldDownloadFeed() {
-		//b.downloadAndCategorizeFeeds(b.getFeeds())
-		b.downloadAndCategorizeFeeds()
-		b.Db.SetFeedLastDownloadTime(time.Now())
-	}
-}
-
 // check if rss feeds should be downloaded
-func (b *Analyzer) tickerShouldDownloadFeed() bool {
+func (b *Analyzer) tickerShouldDownloadFeeds() bool {
 	// load last download timestamp
 	lastDownloadTime := b.Db.GetFeedLastDownloadTime()
 	do := true
@@ -80,7 +73,11 @@ func (b *Analyzer) startFeedDownloadTicker() {
 		for {
 			select {
 			case <-ticker.C:
-				b.tickerTryDownload()
+				if b.tickerShouldDownloadFeeds() {
+					//b.downloadAndCategorizeFeeds(b.getFeeds())
+					b.downloadAndCategorizeFeeds()
+					b.Db.SetFeedLastDownloadTime(time.Now())
+				}
 			case <-quit:
 				ticker.Stop()
 				return

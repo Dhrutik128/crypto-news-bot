@@ -4,13 +4,15 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/mmcdole/gofeed"
+	"time"
 )
 
 type Feed struct {
-	HashKey     []byte       `json:"hash_key"`
-	Subscribers []int        `json:"subscribers"`
-	Source      *gofeed.Feed `json:"source"`
-	IsDefault   bool         `json:"is_default"`
+	HashKey           []byte       `json:"hash_key"`
+	Subscribers       []int        `json:"subscribers"`
+	Source            *gofeed.Feed `json:"source"`
+	IsDefault         bool         `json:"is_default"`
+	DownloadTimestamp time.Time    `json:"download_timestamp"`
 }
 
 // hash the feed struct using the feed link
