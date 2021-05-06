@@ -45,7 +45,7 @@ var KeyWords = [][]string{
 	{"ZEC", "Zcash"},
 	{"FORTH", "Ampleforth Governance Token"},
 	{"FIL", "Filecoin"},
-	{"Uniswap", "uniswap", "UniSwap"},
+	{"UNI", "Uniswap", "uniswap", "UniSwap"},
 	{"BTG", "Bitcoin Gold", "BITCOIN GOLD"},
 	{"SC", "Siacoin", "Sia Coin", "Sia coin"},
 	{"DOT", "Polkadot"},
@@ -382,6 +382,38 @@ func (b *Analyzer) Start() {
 	b.loadPersistedItems()
 	// start the download ticker for previously loaded feeds
 	b.startFeedDownloadTicker()
+	b.StartCleanup(b.NewsStorageDuration)
+}
+
+func (b *Analyzer) StartCleanup(duration time.Duration) {
+	remove(b, duration)
+	ticker := time.NewTicker(time.Hour)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				remove(b, duration)
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+}
+
+func remove(c *Analyzer, duration time.Duration) {
+	for _, item := range c.SentimentCompiler {
+		for key, feedItem := range item.Items {
+			if feedItem.Item.PublishedParsed.Before(time.Now().Add(-(duration))) {
+				c.Mutex.Lock()
+				log.WithFields(log.Fields{"key": key, "published": feedItem.Item.Published}).Debug("removing feed item from compiler")
+				delete(item.Items, key)
+				c.Mutex.Unlock()
+			}
+		}
+
+	}
 }
 
 // contains checks if slice of strings contains a certain string
