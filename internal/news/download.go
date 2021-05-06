@@ -66,17 +66,21 @@ func (b *Analyzer) tickerShouldDownloadFeeds() bool {
 
 // first try to download all user feeds, then start a download ticker based on configurable refresh rate
 func (b *Analyzer) startFeedDownloadTicker() {
+	tryDownload := func() {
+		if b.tickerShouldDownloadFeeds() {
+			//b.downloadAndCategorizeFeeds(b.getFeeds())
+			b.downloadAndCategorizeFeeds()
+			b.Db.SetFeedLastDownloadTime(time.Now())
+		}
+	}
+	tryDownload()
 	ticker := time.NewTicker(b.RefreshPeriodDuration)
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				if b.tickerShouldDownloadFeeds() {
-					//b.downloadAndCategorizeFeeds(b.getFeeds())
-					b.downloadAndCategorizeFeeds()
-					b.Db.SetFeedLastDownloadTime(time.Now())
-				}
+				tryDownload()
 			case <-quit:
 				ticker.Stop()
 				return
