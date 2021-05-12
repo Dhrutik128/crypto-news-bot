@@ -29,7 +29,7 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer) f
 	return func(m *tb.Message) {
 		if user, err := storage.UserRequired(m.Sender, db, bot); err == nil {
 			if m.Text == "/feed" {
-				_, err := bot.Send(m.Sender, markdownEscape(helpText))
+				_, err := bot.Send(m.Sender, markdownEscape(helpText), tb.ModeMarkdownV2)
 				if err != nil {
 					fmt.Println(err)
 				}
