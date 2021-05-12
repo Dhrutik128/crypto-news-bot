@@ -7,13 +7,16 @@ import (
 	"time"
 )
 
+// Storable items must provide a function to retrieve the database key
 type Storable interface {
 	Key() []byte
 }
+
 type DB struct {
 	*buntdb.DB
 }
 
+// GetFeedLastDownloadTime from storage
 func (db DB) GetFeedLastDownloadTime() time.Time {
 	var t time.Time
 	config.IgnoreError(db.View(func(tx *buntdb.Tx) error {
@@ -26,6 +29,8 @@ func (db DB) GetFeedLastDownloadTime() time.Time {
 	}))
 	return t
 }
+
+// SetFeedLastDownloadTime in storage
 func (db DB) SetFeedLastDownloadTime(t time.Time) {
 	config.IgnoreError(db.Update(func(tx *buntdb.Tx) error {
 		_, _, err := tx.Set("lastDownloadTime", t.Format(time.RFC3339), nil)
@@ -33,6 +38,7 @@ func (db DB) SetFeedLastDownloadTime(t time.Time) {
 	}))
 }
 
+// Exists checks is storable item exists
 func (db DB) Exists(storable Storable) (ok bool, err error) {
 	ok = false
 	err = db.View(func(tx *buntdb.Tx) error {
@@ -54,6 +60,7 @@ func (db DB) Exists(storable Storable) (ok bool, err error) {
 
 }
 
+// Get a storable item
 func (db DB) Get(object Storable) error {
 	err := db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(string(object.Key()))
@@ -69,6 +76,7 @@ func (db DB) Get(object Storable) error {
 	return err
 }
 
+// Set a storable item.
 func (db DB) Set(object Storable) error {
 	err := db.Update(func(tx *buntdb.Tx) error {
 		b, err := json.Marshal(object)
@@ -82,6 +90,7 @@ func (db DB) Set(object Storable) error {
 	return err
 }
 
+// Delete a storable item.
 func (db DB) Delete(object Storable) error {
 	err := db.Update(func(tx *buntdb.Tx) error {
 		_, err := tx.Delete(string(object.Key()))
