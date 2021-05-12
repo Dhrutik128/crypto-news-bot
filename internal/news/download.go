@@ -2,9 +2,12 @@ package news
 
 import (
 	"context"
-	"github.com/gohumble/crypto-news-bot/internal/storage"
+	"github.com/gohumble/crypto-news-bot/internal/config"
+	"github.com/gohumble/crypto-news-bot/internal/safe"
 	"github.com/mmcdole/gofeed"
 	log "github.com/sirupsen/logrus"
+	"net/url"
+	"sync"
 	"time"
 )
 
@@ -27,28 +30,23 @@ func (b *Analyzer) getFeeds() []string {
 	}
 	return keys
 }
-func (b *Analyzer) downloadAndCategorizeFeeds() {
-	for _, feed := range b.Feeds {
-		go func(feed *storage.Feed) {
-			if len(feed.Subscribers) > 0 {
-				// TODO -- check here if the feeds last download timestamp is older that x
-				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("Downloading RSS Feeds")
-				fetchedFeed, err := fetch(feed.Source.FeedLink)
-				if err != nil {
-					log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink, "error": err.Error()}).Error("Failed downloading feed")
-					return
-				}
-				feed.DownloadTimestamp = time.Now()
-				if fetchedFeed.FeedLink == "" {
-					fetchedFeed.FeedLink = feed.Source.FeedLink
-				}
-				b.categorizeFeed(fetchedFeed)
-			} else {
-				log.WithFields(log.Fields{"module": "[DOWNLOAD]", "link": feed.Source.FeedLink}).Info("skipping feed. no subscriber")
-			}
 
-		}(feed)
+// downloads and processes all previously added feeds again
+func (b *Analyzer) downloadAndCategorizeFeeds() {
+	wg := &sync.WaitGroup{}
+	for _, feed := range b.Feeds {
+		wg.Add(1)
+		requestContext := context.WithValue(context.Background(), "ref", feed.Source.String())
+		b.Pool.GoCtx(safe.NewRoutineWithContext(func(ctx context.Context, routine safe.RoutineCtx) {
+			feedUrl, err := url.Parse(feed.Source.FeedLink)
+			if err != nil {
+				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not parse feed url")
+				return
+			}
+			config.IgnoreError(b.add(feedUrl, nil, wg, false))
+		}, requestContext))
 	}
+	wg.Wait()
 }
 
 // check if rss feeds should be downloaded
@@ -73,7 +71,7 @@ func (b *Analyzer) startFeedDownloadTicker() {
 			b.Db.SetFeedLastDownloadTime(time.Now())
 		}
 	}
-	tryDownload()
+	//tryDownload()
 	ticker := time.NewTicker(b.RefreshPeriodDuration)
 	quit := make(chan struct{})
 	go func() {

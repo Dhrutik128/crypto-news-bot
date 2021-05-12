@@ -1,10 +1,12 @@
 package news
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/drankou/go-vader/vader"
 	"github.com/gohumble/crypto-news-bot/internal/config"
+	"github.com/gohumble/crypto-news-bot/internal/safe"
 	"github.com/gohumble/crypto-news-bot/internal/storage"
 	"github.com/mmcdole/gofeed"
 	"github.com/olekukonko/tablewriter"
@@ -64,6 +66,7 @@ type Analyzer struct {
 	Channels              Channels
 	Sources               [][]string
 	Db                    *storage.DB
+	Pool                  *safe.Pool
 }
 
 // Channels BroadCastChannel accepts Broadcasts that will be sent to users if relevant.
@@ -88,7 +91,8 @@ func NewAnalyzer(db *storage.DB, refreshRate time.Duration, storageDuration time
 	}
 	// currently there is no more need for this channels, but they are still included.
 	c := Channels{BroadCastChannel: make(chan BroadCast, 10)}
-
+	pool := safe.NewPool(context.Background())
+	pool.Start()
 	return &Analyzer{
 		RefreshPeriodDuration: refreshRate,
 		NewsStorageDuration:   storageDuration,
@@ -98,6 +102,7 @@ func NewAnalyzer(db *storage.DB, refreshRate time.Duration, storageDuration time
 		SentimentCompiler:     make(map[string]*storage.Compiler, 0),
 		SentimentAnalyzer:     sia,
 		Channels:              c,
+		Pool:                  pool,
 	}
 
 }
@@ -118,78 +123,78 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 	return b.Db.Set(user)
 
 }
+func (b *Analyzer) add(source *url.URL, user *storage.User, wg *sync.WaitGroup, isDefaultFeed bool) error {
+	defer wg.Done()
+
+	feed, err := fetch(source.String())
+	if err != nil {
+		log.WithFields(log.Fields{"error": err.Error()}).Error("could not fetch feed")
+		return err
+	}
+	if feed.FeedLink == "" && feed.Link != "" {
+		feed.FeedLink = feed.Link
+	}
+	// update the source if different from feed link
+	// using the feed link as source may protect us from issues when there is a redirect
+	// therefore using the feed link (from rss backend!) as source should avoid multiple links leading to same feed
+	if feed.FeedLink != source.String() {
+		source, err = url.Parse(feed.FeedLink)
+		if err != nil {
+			return err
+		}
+		// recheck feeds with updated source link
+		if b.Feeds[source.String()] != nil {
+			// feed already imported so just check the user and add his subscription to feed
+			if user != nil {
+				err = b.Feeds[source.String()].AddUser(user)
+				if err != nil {
+					return err
+				}
+			}
+			b.Feeds[source.String()].DownloadTimestamp = time.Now()
+			err = storage.SetFeed(b.Feeds[source.String()], b.Db)
+			if err != nil {
+				return err
+			}
+			// we do shouldCategorize here because we freshly downloaded the feed. dont waste that data.
+			b.categorizeFeed(b.Feeds[source.String()].Source)
+			return nil
+		}
+	}
+	var f *storage.Feed
+	if b.Feeds[source.String()] != nil {
+		f = b.Feeds[source.String()]
+	} else {
+		f = &storage.Feed{Source: feed, IsDefault: isDefaultFeed}
+	}
+	// feed does not exist yet
+	f.DownloadTimestamp = time.Now()
+	if user != nil {
+		err = f.AddUser(user)
+		if err != nil {
+			return err
+		}
+	}
+	err = storage.SetFeed(f, b.Db)
+	if err != nil {
+		return err
+	}
+	b.Feeds[source.String()] = f
+	b.categorizeFeed(feed)
+
+	return nil
+}
 
 // AddFeed if feed does not exists in the news analyzer, we should fetch the feed, add the current user
 // store the feed and run the analytics.
 // if feed is already included in the news analyzer, we just add the user and update the feed in storage.
-func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, isDefaultFeed bool) error {
-	// case 1 -- new feed
-	if b.Feeds[source.String()] == nil {
-		feed, err := fetch(source.String())
-		if err != nil {
-			return err
-		}
-		if feed.FeedLink == "" && feed.Link != "" {
-			feed.FeedLink = feed.Link
-		}
-		// update the source if different from feed link
-		// using the feed link as source may protect us from issues when there is a redirect
-		// therefore using the feed link (from rss backend!) as source should avoid multiple links leading to same feed
-		if feed.FeedLink != source.String() {
-			source, err = url.Parse(feed.FeedLink)
-			if err != nil {
-				return err
-			}
-			// recheck feeds with updated source link
-			if b.Feeds[source.String()] != nil {
-				// feed already imported so just check the user and add his subscription to feed
-				if user != nil {
-					err = b.Feeds[source.String()].AddUser(user)
-					if err != nil {
-						return err
-					}
-				}
-				b.Feeds[source.String()].DownloadTimestamp = time.Now()
-				err = storage.SetFeed(b.Feeds[source.String()], b.Db)
-				if err != nil {
-					return err
-				}
-				// we do shouldCategorize here because we freshly downloaded the feed. dont waste that data.
-				b.categorizeFeed(b.Feeds[source.String()].Source)
-				return nil
-			}
-		}
-		// feed does not exist yet
-		f := &storage.Feed{Source: feed, IsDefault: isDefaultFeed}
-		if user != nil {
-			err = f.AddUser(user)
-			if err != nil {
-				return err
-			}
-		}
-		f.DownloadTimestamp = time.Now()
-		err = storage.ImportFeed(f, b.Db)
-		if err != nil {
-			return err
-		}
-		b.Feeds[source.String()] = f
-		b.categorizeFeed(feed)
-		return nil
-
-	}
-	if user != nil {
-		// case 2 -- feed already exists. user subscribes to existing feed!
-		err := b.Feeds[source.String()].AddUser(user)
-		if err != nil {
-			return err
-		}
-		err = storage.SetFeed(b.Feeds[source.String()], b.Db)
-		if err != nil {
-			// todo -- remove the fee from user when setFeed fails.
-			return err
-		}
-	}
-
+func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, wg *sync.WaitGroup, isDefaultFeed bool) error {
+	// todo -- check here if b.Feed[source] exists and last download timestamp before starting to download feed. These feeds could also be feeds added by users using the /feed command.
+	wg.Add(1)
+	requestContext := context.WithValue(context.Background(), "ref", source.String())
+	b.Pool.GoCtx(safe.NewRoutineWithContext(func(ctx context.Context, routine safe.RoutineCtx) {
+		config.IgnoreError(b.add(source, user, wg, isDefaultFeed))
+	}, requestContext))
 	return nil
 }
 
@@ -361,6 +366,8 @@ func (b *Analyzer) loadPersistedItems() {
 
 // AddUserToDefaultFeeds adds the user to all default feed items of the analyzer
 func (b *Analyzer) AddUserToDefaultFeeds(user *storage.User) {
+	wg := &sync.WaitGroup{}
+	t1 := time.Now()
 	if len(b.Feeds) == 0 {
 		for _, feed := range DefaultFeed {
 			feedUrl, err := url.Parse(feed)
@@ -368,11 +375,13 @@ func (b *Analyzer) AddUserToDefaultFeeds(user *storage.User) {
 				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not parse feed url")
 				continue
 			}
-			err = b.AddFeed(feedUrl, user, true)
+			err = b.AddFeed(feedUrl, user, wg, true)
 			if err != nil {
 				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not add user to feed")
 			}
 		}
+		wg.Wait()
+		fmt.Println("Processed feeds in ", time.Now().Sub(t1).String())
 	}
 }
 

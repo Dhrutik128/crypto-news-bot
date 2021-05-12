@@ -9,6 +9,7 @@ import (
 	tb "gopkg.in/tucnak/telebot.v2"
 	"net/url"
 	"strings"
+	"sync"
 )
 
 var (
@@ -40,6 +41,7 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer) f
 				case "add":
 					urls := s[1]
 					urlSlice := strings.Split(urls, ",")
+					wg := &sync.WaitGroup{}
 					for _, feedUrl := range urlSlice {
 
 						u, err := url.Parse(feedUrl)
@@ -50,7 +52,8 @@ func feedsCommandHandler(bot *tb.Bot, db *storage.DB, analyzer *news.Analyzer) f
 						log.Print("adding ", u.String())
 						log.Print("uri ", u.RequestURI())
 						log.Print("path ", u.EscapedPath())
-						err = analyzer.AddFeed(u, user, false)
+						err = analyzer.AddFeed(u, user, wg, false)
+						wg.Wait()
 						if err != nil {
 							config.IgnoreErrorMultiReturn(bot.Send(m.Sender, markdownEscape(fmt.Sprintf("could not add feed %s\n%s", feedUrl, err.Error())), FeedsSelector, tb.ModeMarkdownV2))
 						}

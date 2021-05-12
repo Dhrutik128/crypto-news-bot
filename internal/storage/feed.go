@@ -47,11 +47,13 @@ func ImportFeed(feed *Feed, db *DB) error {
 
 // SetFeed for updating the feed in storage.
 func SetFeed(feed *Feed, db *DB) error {
-	items := feed.Source.Items
-	feed.Source.Items = nil
-	defer func() {
-		feed.Source.Items = items
-	}()
+	if feed.Source.Items != nil {
+		items := feed.Source.Items
+		feed.Source.Items = nil
+		defer func() {
+			feed.Source.Items = items
+		}()
+	}
 	return db.Set(feed)
 }
 
