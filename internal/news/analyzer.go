@@ -121,11 +121,11 @@ func (b *Analyzer) RemoveFeed(source *url.URL, user *storage.User) error {
 		}
 	}
 	return b.Db.Set(user)
-
 }
-func (b *Analyzer) add(source *url.URL, user *storage.User, wg *sync.WaitGroup, isDefaultFeed bool) error {
-	defer wg.Done()
 
+// addSource will a a new feed source and
+func (b *Analyzer) addSource(source *url.URL, user *storage.User, wg *sync.WaitGroup, isDefaultFeed bool) error {
+	defer wg.Done()
 	feed, err := fetch(source.String())
 	if err != nil {
 		log.WithFields(log.Fields{"error": err.Error()}).Error("could not fetch feed")
@@ -144,7 +144,7 @@ func (b *Analyzer) add(source *url.URL, user *storage.User, wg *sync.WaitGroup, 
 		}
 		// recheck feeds with updated source link
 		if b.Feeds[source.String()] != nil {
-			// feed already imported so just check the user and add his subscription to feed
+			// feed already imported so just check the user and addSource his subscription to feed
 			if user != nil {
 				err = b.Feeds[source.String()].AddUser(user)
 				if err != nil {
@@ -185,15 +185,15 @@ func (b *Analyzer) add(source *url.URL, user *storage.User, wg *sync.WaitGroup, 
 	return nil
 }
 
-// AddFeed if feed does not exists in the news analyzer, we should fetch the feed, add the current user
+// AddFeed if feed does not exists in the news analyzer, we should fetch the feed, addSource the current user
 // store the feed and run the analytics.
-// if feed is already included in the news analyzer, we just add the user and update the feed in storage.
+// if feed is already included in the news analyzer, we just addSource the user and update the feed in storage.
 func (b *Analyzer) AddFeed(source *url.URL, user *storage.User, wg *sync.WaitGroup, isDefaultFeed bool) error {
 	// todo -- check here if b.Feed[source] exists and last download timestamp before starting to download feed. These feeds could also be feeds added by users using the /feed command.
 	wg.Add(1)
 	requestContext := context.WithValue(context.Background(), "ref", source.String())
 	b.Pool.GoCtx(safe.NewRoutineWithContext(func(ctx context.Context, routine safe.RoutineCtx) {
-		config.IgnoreError(b.add(source, user, wg, isDefaultFeed))
+		config.IgnoreError(b.addSource(source, user, wg, isDefaultFeed))
 	}, requestContext))
 	return nil
 }
@@ -237,7 +237,7 @@ func (b *Analyzer) categorizeFeedItem(s *storage.FeedItem) {
 		}
 		if b.SentimentCompiler[coin].Items[itemHash] == nil {
 			if contains(s.Item.Title, words) {
-				// feed title contains a coin keyword so we add sentiment analysis
+				// feed title contains a coin keyword so we addSource sentiment analysis
 				s.Sentiment = b.SentimentAnalyzer.PolarityScores(s.Item.Title)
 				s.Coin = coin
 				compiler.Items[itemHash] = s
@@ -315,7 +315,7 @@ func sendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCast) 
 	feedItem.WasBroadcast = true
 }
 
-// loadPersistedItems from storage and add them to news analyzer (when loading the application)
+// loadPersistedItems from storage and addSource them to news analyzer (when loading the application)
 func (b *Analyzer) loadPersistedItems() {
 	// loading all processed feed items from past 3 days
 	err := b.Db.View(func(tx *buntdb.Tx) error {
@@ -377,7 +377,7 @@ func (b *Analyzer) AddUserToDefaultFeeds(user *storage.User) {
 			}
 			err = b.AddFeed(feedUrl, user, wg, true)
 			if err != nil {
-				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not add user to feed")
+				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not addSource user to feed")
 			}
 		}
 		wg.Wait()

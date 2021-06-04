@@ -1,11 +1,12 @@
 # <p align="center"> Crypto News Telegram Bot
 
-<p align="center"> A simple telegram bot that will help you stay updated on your latest crypto news 
+<p align="center"> A telegram bot, that sends you news updates based on your favorite cryptocurrency
 
 This bot will help you keep track of the latest news on your favorite cryptocurrency. 
-It reads multiple RSS feeds and groups all items by currency. These grouped items are then further processed using sentiment analysis.
+It reads multiple RSS feeds and groups all items by cryptocurrency.
+These grouped items are then further processed using sentiment analysis.
 
-This analysis can help determine how positive or negative the news situation is.
+This analysis can help determine how positive or negative the news situation on a single cryptocurrency is.
 
 * [Getting started](#getting-started)
 * [Usage](#usage)

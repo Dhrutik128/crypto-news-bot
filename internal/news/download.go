@@ -43,7 +43,7 @@ func (b *Analyzer) downloadAndCategorizeFeeds() {
 				log.WithFields(log.Fields{"feed": feed, "error": err.Error()}).Error("could not parse feed url")
 				return
 			}
-			config.IgnoreError(b.add(feedUrl, nil, wg, false))
+			config.IgnoreError(b.addSource(feedUrl, nil, wg, false))
 		}, requestContext))
 	}
 	wg.Wait()
