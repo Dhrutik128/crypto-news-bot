@@ -74,6 +74,7 @@ func (b *Analyzer) startFeedDownloadTicker() {
 	//tryDownload()
 	ticker := time.NewTicker(b.RefreshPeriodDuration)
 	quit := make(chan struct{})
+	tryDownload()
 	go func() {
 		for {
 			select {
