@@ -54,14 +54,17 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
+	log.Infoln("started database")
 	database := &storage.DB{DB: db}
 	bot := NewsBot{NewsFeed: news.NewAnalyzer(database, Config.RefreshPeriodDuration, Config.NewsStorageDuration), Db: database}
+	log.Infoln("initialized bot")
 	bot.Telegram = telegram.New(bot.Db, bot.NewsFeed, Config.BotToken)
 	bot.Start()
 }
 
 func (b *NewsBot) Start() {
+	log.Infoln("starting news feed")
 	b.NewsFeed.Start()
+	log.Infoln("starting telegram")
 	b.Telegram.Start()
 }

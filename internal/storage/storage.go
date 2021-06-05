@@ -17,7 +17,7 @@ type DB struct {
 }
 
 // GetFeedLastDownloadTime from storage
-func (db DB) GetFeedLastDownloadTime() time.Time {
+func (db *DB) GetFeedLastDownloadTime() time.Time {
 	var t time.Time
 	config.IgnoreError(db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get("lastDownloadTime")
@@ -31,7 +31,7 @@ func (db DB) GetFeedLastDownloadTime() time.Time {
 }
 
 // SetFeedLastDownloadTime in storage
-func (db DB) SetFeedLastDownloadTime(t time.Time) {
+func (db *DB) SetFeedLastDownloadTime(t time.Time) {
 	config.IgnoreError(db.Update(func(tx *buntdb.Tx) error {
 		_, _, err := tx.Set("lastDownloadTime", t.Format(time.RFC3339), nil)
 		return err
@@ -39,7 +39,7 @@ func (db DB) SetFeedLastDownloadTime(t time.Time) {
 }
 
 // Exists checks is storable item exists
-func (db DB) Exists(storable Storable) (ok bool, err error) {
+func (db *DB) Exists(storable Storable) (ok bool, err error) {
 	ok = false
 	err = db.View(func(tx *buntdb.Tx) error {
 		_, err := tx.Get(string(storable.Key()))
@@ -61,7 +61,7 @@ func (db DB) Exists(storable Storable) (ok bool, err error) {
 }
 
 // Get a storable item
-func (db DB) Get(object Storable) error {
+func (db *DB) Get(object Storable) error {
 	err := db.View(func(tx *buntdb.Tx) error {
 		val, err := tx.Get(string(object.Key()))
 		if err != nil {
@@ -77,7 +77,7 @@ func (db DB) Get(object Storable) error {
 }
 
 // Set a storable item.
-func (db DB) Set(object Storable) error {
+func (db *DB) Set(object Storable) error {
 	err := db.Update(func(tx *buntdb.Tx) error {
 		b, err := json.Marshal(object)
 		if err != nil {
@@ -91,10 +91,21 @@ func (db DB) Set(object Storable) error {
 }
 
 // Delete a storable item.
-func (db DB) Delete(object Storable) error {
-	err := db.Update(func(tx *buntdb.Tx) error {
-		_, err := tx.Delete(string(object.Key()))
-		return err
+func (db *DB) Delete(object Storable) error {
+	return db.Update(func(tx *buntdb.Tx) error {
+		var delkeys []string
+		tx.Ascend("user", func(key, value string) bool {
+			if key == string(object.Key()) {
+				delkeys = append(delkeys, key)
+			}
+			return true
+		})
+		for _, k := range delkeys {
+			if _, err := tx.Delete(k); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
-	return err
+
 }

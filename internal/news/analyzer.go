@@ -263,6 +263,7 @@ func (b *Analyzer) categorizeFeedItemFromStorage(object storage.Storable) error 
 }
 
 // categorizeFeed categorizes all feed items
+// todo -- do not re parse feedUrl
 func (b *Analyzer) categorizeFeed(feed *gofeed.Feed) {
 	feedUrl, err := url.Parse(feed.FeedLink)
 	if err != nil {
@@ -391,18 +392,18 @@ func (b *Analyzer) Start() {
 	b.loadPersistedItems()
 	// start the download ticker for previously loaded feeds
 	b.startFeedDownloadTicker()
-	b.StartCleanup(b.NewsStorageDuration)
+	b.StartCleanup()
 }
 
-func (b *Analyzer) StartCleanup(duration time.Duration) {
-	remove(b, duration)
+func (b *Analyzer) StartCleanup() {
+	remove(b)
 	ticker := time.NewTicker(time.Hour)
 	quit := make(chan struct{})
 	go func() {
 		for {
 			select {
 			case <-ticker.C:
-				remove(b, duration)
+				remove(b)
 			case <-quit:
 				ticker.Stop()
 				return
@@ -411,10 +412,10 @@ func (b *Analyzer) StartCleanup(duration time.Duration) {
 	}()
 }
 
-func remove(c *Analyzer, duration time.Duration) {
+func remove(c *Analyzer) {
 	for _, item := range c.SentimentCompiler {
 		for key, feedItem := range item.Items {
-			if feedItem.Item.PublishedParsed.Before(time.Now().Add(-(duration))) {
+			if feedItem.Item.PublishedParsed.Before(time.Now().Add(-(c.NewsStorageDuration))) {
 				c.Mutex.Lock()
 				log.WithFields(log.Fields{"key": key, "published": feedItem.Item.Published}).Debug("removing feed item from compiler")
 				delete(item.Items, key)

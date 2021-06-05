@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/buntdb"
 	tb "gopkg.in/tucnak/telebot.v2"
+	"strings"
 )
 
 var markdownEscapes = []string{"_", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"}
@@ -16,7 +17,8 @@ var markdownEscapes = []string{"_", "[", "]", "(", ")", "~", "`", ">", "#", "+",
 // that are subscribed to the feed and coin
 func StartUserBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan news.BroadCast) {
 	broadcaster := func(broadCast news.BroadCast) {
-		err := b.Db.View(func(tx *buntdb.Tx) error {
+		err := b.Db.Update(func(tx *buntdb.Tx) error {
+			var delkeys []string
 			err := tx.Ascend("user", func(key, value string) bool {
 				user := storage.User{}
 				err := json.Unmarshal([]byte(value), &user)
@@ -30,7 +32,13 @@ func StartUserBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan n
 						broadCast.User = user.User
 						err := sendBroadCast(bot, broadCast)
 						if err != nil {
-							checkUserBlockedBot(err, broadCast.User, b.Db)
+							switch err.(type) {
+							case *tb.APIError:
+								apiError := err.(*tb.APIError)
+								if apiError.Code == 401 && strings.Contains(apiError.Description, "blocked") {
+									delkeys = append(delkeys, key)
+								}
+							}
 							return false
 						}
 						log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("BROADCAST \n%s\nto %s\n", broadCast.FeedItem.Item.Title, broadCast.User.Username)
@@ -39,6 +47,14 @@ func StartUserBroadCaster(b *news.Analyzer, bot *tb.Bot, broadCastChannel chan n
 				}
 				return true
 			})
+			for _, k := range delkeys {
+				log.WithFields(log.Fields{"module": "[TELEGRAM]"}).Infof("user %s (%d) blocked bot. Deleting user data.", broadCast.User.Username, broadCast.User.ID)
+				if _, err = tx.Delete(k); err != nil {
+					log.WithFields(log.Fields{"error": err.Error(), "module": "[TELEGRAM]"}).Error("could not delete user")
+					return err
+				}
+			}
+
 			return err
 		})
 		if err != nil {
