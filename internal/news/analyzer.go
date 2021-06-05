@@ -60,7 +60,7 @@ type Analyzer struct {
 	RefreshPeriodDuration time.Duration
 	NewsStorageDuration   time.Duration
 	Feeds                 map[string]*storage.Feed
-	SentimentCompiler     map[string]*storage.Compiler
+	SentimentCompiler     map[string]*storage.SentimentCompiler
 	Mutex                 sync.Mutex
 	SentimentAnalyzer     vader.SentimentIntensityAnalyzer
 	Channels              Channels
@@ -99,7 +99,7 @@ func NewAnalyzer(db *storage.DB, refreshRate time.Duration, storageDuration time
 		Db:                    db,
 		Mutex:                 sync.Mutex{},
 		Feeds:                 make(map[string]*storage.Feed, 0),
-		SentimentCompiler:     make(map[string]*storage.Compiler, 0),
+		SentimentCompiler:     make(map[string]*storage.SentimentCompiler, 0),
 		SentimentAnalyzer:     sia,
 		Channels:              c,
 		Pool:                  pool,
@@ -231,7 +231,7 @@ func (b *Analyzer) categorizeFeedItem(s *storage.FeedItem) {
 	// get all coin keywords
 	for _, words := range KeyWords {
 		coin := words[0]
-		compiler := storage.NewCompiler()
+		compiler := storage.NewSentimentCompiler()
 		if b.SentimentCompiler[coin] == nil {
 			b.SentimentCompiler[coin] = compiler
 		}
@@ -254,7 +254,7 @@ func (b *Analyzer) categorizeFeedItemFromStorage(object storage.Storable) error 
 	s := object.(*storage.FeedItem)
 	if s.Sentiment != nil {
 		if b.SentimentCompiler[s.Coin] == nil {
-			b.SentimentCompiler[s.Coin] = storage.NewCompiler()
+			b.SentimentCompiler[s.Coin] = storage.NewSentimentCompiler()
 		}
 		b.SentimentCompiler[s.Coin].Items[fmt.Sprintf("%x", object.Key())] = s
 	}
