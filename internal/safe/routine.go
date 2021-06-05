@@ -58,5 +58,5 @@ func GoWithRecover(goroutine func(), customRecover func(err interface{})) {
 }
 
 func defaultRecoverGoroutine(err interface{}) {
-	log.Error("Error in Go routine: %s", err)
+	log.Errorf("Error in Go routine: %s", err)
 }
