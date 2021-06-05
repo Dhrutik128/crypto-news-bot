@@ -1,4 +1,5 @@
 config.yaml
 log
 data/data.db
+data/data_test.db
 .idea/
