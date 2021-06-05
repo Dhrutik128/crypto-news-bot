@@ -318,9 +318,30 @@ func sendBroadCast(feedItem *storage.FeedItem, broadcastChannel chan BroadCast) 
 
 // loadPersistedItems from storage and addSource them to news analyzer (when loading the application)
 func (b *Analyzer) loadPersistedItems() {
+	// load all feeds that users are subscribed to
+	config.IgnoreError(b.Db.View(func(tx *buntdb.Tx) error {
+		err := tx.Ascend("feed", func(key, value string) bool {
+			log.Infoln("loading persisted feed items")
+			feed := &storage.Feed{}
+			err := json.Unmarshal([]byte(value), feed)
+			if err != nil {
+				return true
+			}
+			if len(feed.Subscribers) > 0 {
+				feedUrl, err := url.Parse(feed.Source.FeedLink)
+				if err != nil {
+					return true
+				}
+				b.Feeds[feedUrl.String()] = feed
+			}
+			return true
+		})
+		return err
+	}))
 	// loading all processed feed items from past 3 days
 	err := b.Db.View(func(tx *buntdb.Tx) error {
 		err := tx.Descend("item", func(key, value string) bool {
+			log.Infoln("loading persisted feed items")
 			item := &storage.FeedItem{HashKey: []byte(key)}
 			err := json.Unmarshal([]byte(value), item)
 			if err != nil {
@@ -342,25 +363,7 @@ func (b *Analyzer) loadPersistedItems() {
 			compiler.Compile()
 		}
 	}
-	// load all feeds that users are subscribed to
-	config.IgnoreError(b.Db.View(func(tx *buntdb.Tx) error {
-		err := tx.Ascend("feed", func(key, value string) bool {
-			feed := &storage.Feed{}
-			err := json.Unmarshal([]byte(value), feed)
-			if err != nil {
-				return true
-			}
-			if len(feed.Subscribers) > 0 {
-				feedUrl, err := url.Parse(feed.Source.FeedLink)
-				if err != nil {
-					return true
-				}
-				b.Feeds[feedUrl.String()] = feed
-			}
-			return true
-		})
-		return err
-	}))
+
 	b.AddUserToDefaultFeeds(nil)
 
 }
