@@ -4,6 +4,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/buntdb"
 	tb "gopkg.in/tucnak/telebot.v2"
+	"os"
 	"testing"
 )
 
@@ -14,10 +15,13 @@ func TestDB_Set(t *testing.T) {
 	type args struct {
 		object User
 	}
-	dbtest, err := buntdb.Open("../../data/data_test.db")
+	dbtest, err := buntdb.Open("data_test.db")
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer func() {
+		os.Remove("data_test.db")
+	}()
 	err = dbtest.CreateIndex("user", "user_*", buntdb.IndexJSON("user.id"))
 	if err != nil {
 		panic(err)
